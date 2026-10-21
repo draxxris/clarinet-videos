@@ -33,8 +33,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--concert-input", action="store_true",
                     help="the file is notated at concert pitch; show written clarinet pitch")
     ap.add_argument("--lead-in", type=float, default=2.5, help="seconds before the first note")
-    ap.add_argument("--lookahead", type=float, default=2.8,
-                    help="seconds of upcoming music shown on the highway")
+    ap.add_argument("--lookahead", type=float,
+                    help="seconds of upcoming music shown on the highway (default about 3)")
     ap.add_argument("--soundfont", help="General MIDI .sf2 soundfont for FluidSynth")
     ap.add_argument("--audio", choices=["auto", "fluidsynth", "builtin"], default="auto",
                     help="audio engine (default: FluidSynth if available, else built-in synth)")
