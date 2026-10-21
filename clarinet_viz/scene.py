@@ -216,6 +216,7 @@ class Scene:
         ctx.set_source_surface(self._body, 0, 0)
         ctx.paint()
         self._draw_keys(ctx, t, cur, nxt)
+        self._draw_thumb(ctx, tips["LT"][0], poses["L"])
         self._draw_shadow(ctx, tips, poses)
         for hand in ("L", "R"):
             hands.draw_hand(ctx, hand, tips, poses[hand])
@@ -778,6 +779,27 @@ class Scene:
                 D.text(ctx, label, x + 18, y + 5, 13, font=text_font, color=L.INK)
 
     # hands -------------------------------------------------------------------
+
+    def _draw_thumb(self, ctx, tip, pose) -> None:
+        """The left thumb works the back of the instrument: solid beside the
+        tube, faint where the tube hides it."""
+        ctx.push_group()
+        hands.draw_thumb(ctx, tip, pose)
+        thumb = ctx.pop_group()
+        ctx.save()
+        ctx.rectangle(0, 0, L.W, L.H)
+        ctx.rectangle(L.BODY_RIGHT, 0, L.BODY_LEFT - L.BODY_RIGHT, L.H)
+        ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+        ctx.clip()
+        ctx.set_source(thumb)
+        ctx.paint()
+        ctx.restore()
+        ctx.save()
+        ctx.rectangle(L.BODY_LEFT, 0, L.BODY_RIGHT - L.BODY_LEFT, L.H)
+        ctx.clip()
+        ctx.set_source(thumb)
+        ctx.paint_with_alpha(L.THUMB_BEHIND_ALPHA)
+        ctx.restore()
 
     def _draw_shadow(self, ctx, tips, poses) -> None:
         sh = self._shadow

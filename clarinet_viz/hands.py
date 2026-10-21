@@ -248,6 +248,24 @@ def draw_hand(ctx: cairo.Context, hand_key: str, tips, pose: "rig.Pose", mode: s
     ctx.restore()
 
 
+def draw_thumb(ctx: cairo.Context, tip, pose: "rig.Pose") -> None:
+    """The left thumb, drawn on its own (the scene shows it ghosted where it
+    passes behind the instrument)."""
+    hand = L.HANDS["L"]
+    local = rig.to_local("L", pose, tip)
+    f = Finger(hand["thumb_base"], local, L.THUMB_W, rig.FINGER_LEN["LT"], bow=-1.0, root=0.4)
+    ctx.save()
+    rig.apply(ctx, "L", pose)
+    set_rgb(ctx, L.SKIN_LINE)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    ctx.set_line_width(4.6)
+    f.path(ctx)
+    ctx.stroke()
+    _finger_fill(ctx, f)
+    _finger_details(ctx, f)
+    ctx.restore()
+
+
 def _draw_hand_local(ctx: cairo.Context, hand: dict, tips, mode: str) -> None:
     names = hand["fingers"]
     fingers = build_fingers(tips, names)

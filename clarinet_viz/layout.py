@@ -127,8 +127,8 @@ NOW_PANEL = (16, 12, 436, 158)
 # the instrument so it comes in from the right, as seen looking down at the
 # clarinet while playing.
 KNUCKLES = {
-    "L1": (372, 350), "L2": (360, 421), "L3": (366, 490), "L4": (378, 556),
-    "R1": (372, 752), "R2": (360, 823), "R3": (366, 892), "R4": (378, 958),
+    "L1": (424, 350), "L2": (412, 421), "L3": (418, 490), "L4": (420, 556),
+    "R1": (424, 752), "R2": (412, 823), "R3": (418, 892), "R4": (420, 958),
 }
 FINGER_W = {"L1": 52, "L2": 55, "L3": 51, "L4": 44,
             "R1": 52, "R2": 55, "R3": 51, "R4": 44, "LT": 52}
@@ -142,12 +142,16 @@ REACH = 0.93
 CURL = 0.58  # a lifted finger curls toward the viewer to this share of its length
 
 # Back of each hand (in the hand's frame): knuckles on the right, wrist off
-# to the left.
+# to the left. The left thumb's root sits under the palm; the thumb itself is
+# behind the instrument, on the thumb hole and register key.
 HANDS = {
-    "L": {"wrist": (110, 456), "wrist_half": 112, "fingers": ["L1", "L2", "L3", "L4"],
-          "thumb_base": (250, 444), "pivot": (240, 456)},
-    "R": {"wrist": (110, 860), "wrist_half": 112, "fingers": ["R1", "R2", "R3", "R4"],
-          "thumb_base": (250, 850), "pivot": (240, 860)},
+    "L": {"wrist": (162, 456), "wrist_half": 112, "fingers": ["L1", "L2", "L3", "L4"],
+          "thumb_base": (392, 404), "pivot": (292, 456)},
+    "R": {"wrist": (162, 860), "wrist_half": 112, "fingers": ["R1", "R2", "R3", "R4"],
+          "thumb_base": (392, 808), "pivot": (292, 860)},
 }
+
+THUMB_W = 50
+THUMB_BEHIND_ALPHA = 0.38   # how much of the thumb shows through the tube
 
 SHADOW_OFFSET = (16, 20)
