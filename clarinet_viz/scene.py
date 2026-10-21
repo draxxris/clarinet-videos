@@ -204,6 +204,8 @@ class Scene:
             self._bg = self._render_background()
             self._body = self._render_body()
             self._overlay = self._render_overlay()
+            self._highway = cairo.ImageSurface(cairo.FORMAT_ARGB32, L.W, L.H)
+            self._draw_highway_static(cairo.Context(self._highway))
         ctx.set_source_surface(self._bg, 0, 0)
         ctx.paint()
         cur, nxt_i = self.current(t)
@@ -211,14 +213,16 @@ class Scene:
         tips = {f: self.finger_tip(f, t) for f in FINGERS}
         poses = {h: self.hand_pose(h, t) for h in rig.HAND_FINGERS}
 
-        self._draw_highway(ctx, t, cur)
-        self._draw_thumbs(ctx, tips, poses)
         ctx.set_source_surface(self._body, 0, 0)
         ctx.paint()
         self._draw_keys(ctx, t, cur, nxt)
         self._draw_shadow(ctx, tips, poses)
         for hand in ("L", "R"):
             hands.draw_hand(ctx, hand, tips, poses[hand])
+        # The highway sits on top of the right hand, beside the instrument.
+        ctx.set_source_surface(self._highway, 0, 0)
+        ctx.paint()
+        self._draw_highway(ctx, t, cur)
         ctx.set_source_surface(self._overlay, 0, 0)
         ctx.paint()
         self._draw_staff_notes(ctx, t, cur)
@@ -248,7 +252,7 @@ class Scene:
             ctx.arc(sx, sy, r, 0, 2 * math.pi)
             D.set_rgb(ctx, L.WHITE, rng.uniform(0.35, 0.9))
             ctx.fill()
-        self._draw_highway_static(ctx)
+        self._draw_lane_guides(ctx)
         return surf
 
     def _render_overlay(self) -> cairo.ImageSurface:
@@ -434,6 +438,18 @@ class Scene:
 
     # highway -----------------------------------------------------------------
 
+    def _draw_lane_guides(self, ctx) -> None:
+        """Dashed guides from each finger's keys toward its lane (under the hands)."""
+        for f in FINGERS:
+            ly = L.LANE_Y[f]
+            ctx.move_to(L.BODY_RIGHT + 14, ly)
+            ctx.line_to(L.STRIKE_X - 26, ly)
+            ctx.set_dash([4, 6])
+            D.set_rgb(ctx, D.darken(L.FINGER_COLORS[f], 0.2), 0.7)
+            ctx.set_line_width(2.5)
+            ctx.stroke()
+            ctx.set_dash([])
+
     def _draw_highway_static(self, ctx) -> None:
         x, y, w, h = L.HIGHWAY_RECT
         D.rounded_rect(ctx, x, y, w, h, 16)
@@ -459,14 +475,6 @@ class Scene:
             ctx.stroke()
             D.text(ctx, L.FINGER_LABELS[f].upper(), L.STRIKE_X + 32, ly - L.LANE_H / 2 + 14, 12,
                    color=c, font=text_font)
-            # Guide from the key on the instrument to its lane.
-            ctx.move_to(L.BODY_RIGHT + 14, ly)
-            ctx.line_to(L.STRIKE_X - 26, ly)
-            ctx.set_dash([4, 6])
-            D.set_rgb(ctx, D.darken(c, 0.2), 0.7)
-            ctx.set_line_width(2.5)
-            ctx.stroke()
-            ctx.set_dash([])
         # Strike line.
         ctx.move_to(L.STRIKE_X, y + 6)
         ctx.line_to(L.STRIKE_X, y + h - 6)
@@ -770,15 +778,6 @@ class Scene:
                 D.text(ctx, label, x + 18, y + 5, 13, font=text_font, color=L.INK)
 
     # hands -------------------------------------------------------------------
-
-    def _draw_thumbs(self, ctx, tips, poses) -> None:
-        """Thumbs sit behind the instrument, so they're drawn before the body."""
-        tip, _ = tips["LT"]
-        hands.draw_thumb(ctx, rig.to_world("L", poses["L"], L.HANDS["L"]["thumb_base"]), tip,
-                         rig.FINGER_LEN["LT"])
-        base = rig.to_world("R", poses["R"], L.HANDS["R"]["thumb_base"])
-        reach = math.hypot(L.RH_THUMB_TIP[0] - base[0], L.RH_THUMB_TIP[1] - base[1])
-        hands.draw_thumb(ctx, base, L.RH_THUMB_TIP, reach / L.REACH)
 
     def _draw_shadow(self, ctx, tips, poses) -> None:
         sh = self._shadow

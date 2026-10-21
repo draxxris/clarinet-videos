@@ -97,13 +97,13 @@ class Finger:
         # and the pad give it a finger's silhouette rather than a tube's.
         self.stations = [
             (self.start, 0.56 * w),
-            (self.K, 0.52 * w),
-            (_lerp(self.K, self.J1, 0.55), 0.465 * w),
-            (self.J1, 0.49 * w),
-            (_lerp(self.J1, self.J2, 0.5), 0.435 * w),
-            (self.J2, 0.445 * w),
-            (_lerp(self.J2, self.T, 0.55), 0.455 * w),
-            (self.T, 0.43 * w),
+            (self.K, 0.53 * w),
+            (_lerp(self.K, self.J1, 0.55), 0.475 * w),
+            (self.J1, 0.485 * w),
+            (_lerp(self.J1, self.J2, 0.5), 0.43 * w),
+            (self.J2, 0.425 * w),
+            (_lerp(self.J2, self.T, 0.55), 0.43 * w),
+            (self.T, 0.395 * w),
         ]
 
     def _normals(self):
@@ -299,17 +299,23 @@ def _draw_hand_local(ctx: cairo.Context, hand: dict, tips, mode: str) -> None:
         return
 
     ctx.push_group()
-    # Pass 1: outlines of every part, so the union has a single contour.
+    # Pass 1: outlines of every part, so the union has a single contour. The
+    # ink is laid twice, once nudged down-right, so lines are heavier on the
+    # shadow side like a brushed outline.
     set_rgb(ctx, L.SKIN_LINE)
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
-    ctx.new_path()
-    _catmull_rom(ctx, palm, closed=True)
-    ctx.set_line_width(4.5)
-    ctx.stroke()
-    for f in fingers.values():
-        f.path(ctx)
-        ctx.set_line_width(4.5)
+    for dx, dy, lw in ((2.2, 3.0, 4.0), (0.0, 0.0, 3.4)):
+        ctx.save()
+        ctx.translate(dx, dy)
+        ctx.new_path()
+        _catmull_rom(ctx, palm, closed=True)
+        ctx.set_line_width(lw)
         ctx.stroke()
+        for name in reversed(names):
+            fingers[name].path(ctx)
+            ctx.set_line_width(lw)
+            ctx.stroke()
+        ctx.restore()
 
     # Pass 2: back of the hand, lit from the index side.
     ys = [p[1] for p in palm]
@@ -378,23 +384,3 @@ def _draw_hand_local(ctx: cairo.Context, hand: dict, tips, mode: str) -> None:
     ctx.stroke()
     ctx.pop_group_to_source()
     ctx.mask(fade)
-
-
-def draw_thumb(ctx: cairo.Context, base, tip, length: float, mode: str = "full") -> None:
-    """A thumb reaching behind the instrument (drawn before the body), in
-    screen coordinates."""
-    f = Finger(base, tip, L.FINGER_W["LT"], length, bow=-1.0, root=0.3)
-    if mode == "silhouette":
-        f.path(ctx)
-        ctx.fill()
-        return
-    f.path(ctx)
-    set_rgb(ctx, L.SKIN_LINE)
-    ctx.set_line_width(4.5)
-    ctx.stroke()
-    _finger_fill(ctx, f)
-    _finger_details(ctx, f)
-    # It sits in the shadow behind the clarinet.
-    f.path(ctx)
-    set_rgb(ctx, (0.05, 0.04, 0.08), 0.3)
-    ctx.fill()

@@ -22,8 +22,8 @@ python -m clarinet_viz examples/ode_to_joy.musicxml -o ode_to_joy.mp4
   rotates as one piece so the fingers can reach their keys; fingers are three
   jointed segments of fixed length that curl (foreshorten) off holes they
   aren't covering. Side keys are pressed by rolling the index finger. The
-  thumbs sit behind the instrument.
-- **Note highway** (right): one horizontal lane per finger, lined up with the
+  thumbs are hidden behind the instrument (their keys light up on the back).
+- **Note highway** (right, drawn over the right hand): one horizontal lane per finger, lined up with the
   keys it plays and colour coded the same on both hands (thumb orange, index
   green, middle red, ring yellow, pinky blue). Notes scroll in from the right
   to the strike line beside the clarinet; a gem's length is how long to hold

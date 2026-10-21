@@ -105,9 +105,9 @@ SHORT_LABELS = {
 LANE_Y = {"LT": 240, "L1": 336, "L2": 420, "L3": 504, "L4": 624,
           "R1": 738, "R2": 822, "R3": 906, "R4": 1010}
 LANE_H = 62
-STRIKE_X = 1136
-HIGHWAY_RECT = (1092, 196, 812, 872)   # x, y, w, h
-PX_PER_SEC = 280
+STRIKE_X = 762
+HIGHWAY_RECT = (718, 196, 1186, 872)   # x, y, w, h
+PX_PER_SEC = 380
 GEM_H = 44
 
 # --- staff strip (shares the highway's timeline) ---------------------------
@@ -127,11 +127,11 @@ NOW_PANEL = (16, 12, 436, 158)
 # the instrument so it comes in from the right, as seen looking down at the
 # clarinet while playing.
 KNUCKLES = {
-    "L1": (342, 332), "L2": (330, 418), "L3": (336, 502), "L4": (350, 580),
-    "R1": (342, 734), "R2": (330, 820), "R3": (336, 904), "R4": (350, 982),
+    "L1": (372, 350), "L2": (360, 421), "L3": (366, 490), "L4": (378, 556),
+    "R1": (372, 752), "R2": (360, 823), "R3": (366, 892), "R4": (378, 958),
 }
-FINGER_W = {"L1": 58, "L2": 61, "L3": 57, "L4": 47,
-            "R1": 58, "R2": 61, "R3": 57, "R4": 47, "LT": 62}
+FINGER_W = {"L1": 66, "L2": 69, "L3": 64, "L4": 54,
+            "R1": 66, "R2": 69, "R3": 64, "R4": 54, "LT": 66}
 MIRRORED = {"L": False, "R": True}
 
 # The key each finger rests near. Finger lengths come from the rest pose:
@@ -139,16 +139,15 @@ MIRRORED = {"L": False, "R": True}
 HOME = {"LT": "T", "L1": "L1", "L2": "L2", "L3": "L3", "L4": "LFS",
         "R1": "R1", "R2": "R2", "R3": "R3", "R4": "RF"}
 REACH = 0.93
-CURL = 0.62  # a lifted finger curls toward the viewer to this share of its length
+CURL = 0.58  # a lifted finger curls toward the viewer to this share of its length
 
 # Back of each hand (in the hand's frame): knuckles on the right, wrist off
 # to the left.
 HANDS = {
-    "L": {"wrist": (40, 452), "wrist_half": 118, "fingers": ["L1", "L2", "L3", "L4"],
-          "thumb_base": (250, 444), "pivot": (200, 450)},
-    "R": {"wrist": (40, 856), "wrist_half": 118, "fingers": ["R1", "R2", "R3", "R4"],
-          "thumb_base": (250, 850), "pivot": (200, 856)},
+    "L": {"wrist": (110, 456), "wrist_half": 112, "fingers": ["L1", "L2", "L3", "L4"],
+          "thumb_base": (250, 444), "pivot": (240, 456)},
+    "R": {"wrist": (110, 860), "wrist_half": 112, "fingers": ["R1", "R2", "R3", "R4"],
+          "thumb_base": (250, 850), "pivot": (240, 860)},
 }
-RH_THUMB_TIP = (BODY_X + 6, THUMB_REST_Y + 8)   # world position
 
 SHADOW_OFFSET = (16, 20)
