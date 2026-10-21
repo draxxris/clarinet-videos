@@ -27,7 +27,14 @@ def base_of(finger: str):
     return L.KNUCKLES[finger]
 
 
-FINGER_LEN = {f: _dist(base_of(f), L.KEY_POS[L.HOME[f]][:2]) / L.REACH for f in FINGER_HAND}
+def _mirror(hand: str, p):
+    """Hands are modelled from the left; the right hand is flipped across the
+    instrument's centre line."""
+    return (2 * L.BODY_X - p[0], p[1]) if L.MIRRORED[hand] else p
+
+
+FINGER_LEN = {f: _dist(base_of(f), _mirror(FINGER_HAND[f], L.KEY_POS[L.HOME[f]][:2])) / L.REACH
+              for f in FINGER_HAND}
 
 
 @dataclass(frozen=True)
@@ -48,11 +55,12 @@ def to_world(hand: str, pose: Pose, p):
     px, py = L.HANDS[hand]["pivot"]
     c, s = math.cos(pose.theta), math.sin(pose.theta)
     x, y = p[0] - px, p[1] - py
-    return (px + pose.dx + c * x - s * y, py + pose.dy + s * x + c * y)
+    return _mirror(hand, (px + pose.dx + c * x - s * y, py + pose.dy + s * x + c * y))
 
 
 def to_local(hand: str, pose: Pose, p):
     px, py = L.HANDS[hand]["pivot"]
+    p = _mirror(hand, p)
     c, s = math.cos(pose.theta), math.sin(pose.theta)
     x, y = p[0] - px - pose.dx, p[1] - py - pose.dy
     return (px + c * x + s * y, py - s * x + c * y)
@@ -61,6 +69,9 @@ def to_local(hand: str, pose: Pose, p):
 def apply(ctx, hand: str, pose: Pose) -> None:
     """Set up ctx so that drawing in rest-pose coordinates lands in the posed hand."""
     px, py = L.HANDS[hand]["pivot"]
+    if L.MIRRORED[hand]:
+        ctx.translate(2 * L.BODY_X, 0)
+        ctx.scale(-1, 1)
     ctx.translate(px + pose.dx, py + pose.dy)
     ctx.rotate(pose.theta)
     ctx.translate(-px, -py)
@@ -86,7 +97,7 @@ def solve_pose(hand: str, targets: dict[str, tuple[float, float]]) -> Pose:
             else:
                 home = L.KEY_POS[L.HOME[f]][:2]
                 out.append((_dist(k, home) - L.REACH * length) * 0.25)
-        out += [v[0] * 0.06, v[1] * 0.06, v[2] * 160]
+        out += [v[0] * 0.06, v[1] * 0.06, v[2] * 500]
         return np.array(out)
 
     v = np.zeros(3)

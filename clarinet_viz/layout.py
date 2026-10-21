@@ -29,7 +29,8 @@ SKIN_LIGHT = hex_rgb("#fff3e6")
 SKIN = hex_rgb("#f7dfc6")
 SKIN_SHADE = hex_rgb("#dfb593")
 SKIN_LINE = hex_rgb("#2a201e")
-NAIL = hex_rgb("#f9d2c6")
+NAIL = hex_rgb("#f2c3b6")
+NAIL_LIGHT = hex_rgb("#fde4dc")
 
 WOOD_EDGE = hex_rgb("#060608")
 WOOD = hex_rgb("#1d1d24")
@@ -89,9 +90,9 @@ KEY_POS = {
     "R1": (BODY_X, 738, "hole"),
     "R2": (BODY_X, 822, "hole"),
     "R3": (BODY_X, 906, "hole"),
-    "RE": (BODY_LEFT - 16, 980, "spatula"),
-    "RF": (BODY_LEFT - 24, 1010, "spatula"),
-    "RGS": (BODY_LEFT - 16, 1040, "spatula"),
+    "RE": (BODY_RIGHT + 16, 980, "spatula"),
+    "RF": (BODY_RIGHT + 24, 1010, "spatula"),
+    "RGS": (BODY_RIGHT + 16, 1040, "spatula"),
 }
 
 SHORT_LABELS = {
@@ -104,9 +105,9 @@ SHORT_LABELS = {
 LANE_Y = {"LT": 240, "L1": 336, "L2": 420, "L3": 504, "L4": 624,
           "R1": 738, "R2": 822, "R3": 906, "R4": 1010}
 LANE_H = 62
-STRIKE_X = 744
-HIGHWAY_RECT = (690, 196, 1214, 872)   # x, y, w, h
-PX_PER_SEC = 380
+STRIKE_X = 1136
+HIGHWAY_RECT = (1092, 196, 812, 872)   # x, y, w, h
+PX_PER_SEC = 280
 GEM_H = 44
 
 # --- staff strip (shares the highway's timeline) ---------------------------
@@ -121,13 +122,17 @@ NOW_PANEL = (16, 12, 436, 158)
 
 # --- hands ---------------------------------------------------------------
 
-# Knuckle (MCP joint) of each finger. Hands come in from the left.
+# Knuckle (MCP joint) of each finger, in each hand's own frame. Both hands
+# are modelled reaching in from the left; the right hand is mirrored across
+# the instrument so it comes in from the right, as seen looking down at the
+# clarinet while playing.
 KNUCKLES = {
-    "L1": (318, 330), "L2": (304, 416), "L3": (310, 500), "L4": (334, 580),
-    "R1": (318, 732), "R2": (304, 818), "R3": (310, 902), "R4": (334, 982),
+    "L1": (342, 332), "L2": (330, 418), "L3": (336, 502), "L4": (350, 580),
+    "R1": (342, 734), "R2": (330, 820), "R3": (336, 904), "R4": (350, 982),
 }
-FINGER_W = {"L1": 52, "L2": 54, "L3": 50, "L4": 42,
-            "R1": 52, "R2": 54, "R3": 50, "R4": 42, "LT": 56}
+FINGER_W = {"L1": 58, "L2": 61, "L3": 57, "L4": 47,
+            "R1": 58, "R2": 61, "R3": 57, "R4": 47, "LT": 62}
+MIRRORED = {"L": False, "R": True}
 
 # The key each finger rests near. Finger lengths come from the rest pose:
 # each fingertip reaches its home key at REACH of the finger's full length.
@@ -136,13 +141,14 @@ HOME = {"LT": "T", "L1": "L1", "L2": "L2", "L3": "L3", "L4": "LFS",
 REACH = 0.93
 CURL = 0.62  # a lifted finger curls toward the viewer to this share of its length
 
-# Back of each hand: knuckle side is on the right, wrist off to the left.
+# Back of each hand (in the hand's frame): knuckles on the right, wrist off
+# to the left.
 HANDS = {
     "L": {"wrist": (40, 452), "wrist_half": 118, "fingers": ["L1", "L2", "L3", "L4"],
-          "thumb_base": (232, 440), "pivot": (190, 450)},
+          "thumb_base": (250, 444), "pivot": (200, 450)},
     "R": {"wrist": (40, 856), "wrist_half": 118, "fingers": ["R1", "R2", "R3", "R4"],
-          "thumb_base": (232, 846), "pivot": (190, 856)},
+          "thumb_base": (250, 850), "pivot": (200, 856)},
 }
-RH_THUMB_TIP = (BODY_X - 6, THUMB_REST_Y + 8)
+RH_THUMB_TIP = (BODY_X + 6, THUMB_REST_Y + 8)   # world position
 
 SHADOW_OFFSET = (16, 20)

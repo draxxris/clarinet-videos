@@ -128,7 +128,8 @@ class Scene:
             # stays near its own hole and rolls toward the key.
             hx, hy, _ = L.KEY_POS[L.HOME[finger]]
             ky = sum(p[1] for p in pts) / len(pts)
-            return hx + 12, hy + max(-34, min(34, ky - hy))
+            kx = sum(p[0] for p in pts) / len(pts)
+            return hx + math.copysign(8, kx - hx), hy + max(-18, min(18, ky - hy))
         holes = [p for p in pts if p[2] in ("hole", "back_hole")]
         if holes:
             return holes[0][0], holes[0][1]
@@ -737,7 +738,10 @@ class Scene:
                 ctx.fill()
                 continue
             if kind == "spatula":
-                self._metal_bar(ctx, x + 18, y - 3, L.BODY_LEFT - x - 14, 6)
+                if x < L.BODY_X:
+                    self._metal_bar(ctx, x + 18, y - 3, L.BODY_LEFT - x - 14, 6)
+                else:
+                    self._metal_bar(ctx, L.BODY_RIGHT - 4, y - 3, x - 14 - L.BODY_RIGHT, 6)
             ctx.save()
             if back:
                 ctx.set_dash([5, 4])
@@ -769,10 +773,12 @@ class Scene:
 
     def _draw_thumbs(self, ctx, tips, poses) -> None:
         """Thumbs sit behind the instrument, so they're drawn before the body."""
-        tip, pr = tips["LT"]
-        hands.draw_thumb(ctx, rig.to_world("L", poses["L"], L.HANDS["L"]["thumb_base"]), tip, pr)
-        hands.draw_thumb(ctx, rig.to_world("R", poses["R"], L.HANDS["R"]["thumb_base"]),
-                         L.RH_THUMB_TIP, 1.0)
+        tip, _ = tips["LT"]
+        hands.draw_thumb(ctx, rig.to_world("L", poses["L"], L.HANDS["L"]["thumb_base"]), tip,
+                         rig.FINGER_LEN["LT"])
+        base = rig.to_world("R", poses["R"], L.HANDS["R"]["thumb_base"])
+        reach = math.hypot(L.RH_THUMB_TIP[0] - base[0], L.RH_THUMB_TIP[1] - base[1])
+        hands.draw_thumb(ctx, base, L.RH_THUMB_TIP, reach / L.REACH)
 
     def _draw_shadow(self, ctx, tips, poses) -> None:
         sh = self._shadow

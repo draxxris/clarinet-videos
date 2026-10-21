@@ -15,12 +15,14 @@ python -m clarinet_viz examples/ode_to_joy.musicxml -o ode_to_joy.mp4
   hole and thumb rest are on the back, so they're drawn dashed. Keys for the
   *next* note pulse in their finger colour as it approaches, and keys in use
   glow while they're held.
-- **Hands**: inked hands with soft shading reach in from the left, fade out
-  at the wrist, and cast soft shadows on the instrument. Each hand is a rigid
-  2D rig: it shifts and rotates as one piece so the fingers can reach their
-  keys, and fingers keep their length, only curling back (toward the viewer)
-  off holes they aren't covering. Side keys are pressed by rolling the index
-  finger. The thumbs sit behind the instrument.
+- **Hands**: inked, softly shaded hands seen from above, as the player sees
+  them: the left hand on the upper joint comes in from the left, the right
+  hand on the lower joint from the right. They fade out at the wrist and cast
+  soft shadows on the instrument. Each hand is a rigid 2D rig that shifts and
+  rotates as one piece so the fingers can reach their keys; fingers are three
+  jointed segments of fixed length that curl (foreshorten) off holes they
+  aren't covering. Side keys are pressed by rolling the index finger. The
+  thumbs sit behind the instrument.
 - **Note highway** (right): one horizontal lane per finger, lined up with the
   keys it plays and colour coded the same on both hands (thumb orange, index
   green, middle red, ring yellow, pinky blue). Notes scroll in from the right
