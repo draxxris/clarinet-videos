@@ -97,13 +97,13 @@ class Finger:
         # and the pad give it a finger's silhouette rather than a tube's.
         self.stations = [
             (self.start, 0.56 * w),
-            (self.K, 0.53 * w),
-            (_lerp(self.K, self.J1, 0.55), 0.475 * w),
-            (self.J1, 0.485 * w),
-            (_lerp(self.J1, self.J2, 0.5), 0.43 * w),
-            (self.J2, 0.425 * w),
-            (_lerp(self.J2, self.T, 0.55), 0.43 * w),
-            (self.T, 0.395 * w),
+            (self.K, 0.52 * w),
+            (_lerp(self.K, self.J1, 0.55), 0.465 * w),
+            (self.J1, 0.47 * w),
+            (_lerp(self.J1, self.J2, 0.5), 0.42 * w),
+            (self.J2, 0.41 * w),
+            (_lerp(self.J2, self.T, 0.55), 0.41 * w),
+            (self.T, 0.37 * w),
         ]
 
     def _normals(self):
@@ -147,7 +147,7 @@ def _palm_points(hand: dict, fingers: dict[str, Finger]):
     # Webbing between neighbouring fingers, a little way up the fingers.
     for a, b in zip(names, names[1:]):
         fa, fb = fingers[a], fingers[b]
-        pts.append(_lerp(_lerp(fa.K, fa.J1, 0.28), _lerp(fb.K, fb.J1, 0.28), 0.5))
+        pts.append(_lerp(_lerp(fa.K, fa.J1, 0.12), _lerp(fb.K, fb.J1, 0.12), 0.5))
     pts.append(_side_point(last, 0.1, 1))
     pts.append((last.K[0] - 70, last.K[1] + last.w * 0.8))
     pts.append((wx + 130, wy + half + 16))
@@ -158,7 +158,7 @@ def _palm_points(hand: dict, fingers: dict[str, Finger]):
 def _wrist_fade(hand: dict) -> cairo.LinearGradient:
     """Alpha mask that fades the hand out toward the wrist, like a vignette."""
     wx, _ = hand["wrist"]
-    g = cairo.LinearGradient(wx + 40, 0, wx + 220, 0)
+    g = cairo.LinearGradient(wx + 10, 0, wx + 140, 0)
     g.add_color_stop_rgba(0, 0, 0, 0, 0)
     g.add_color_stop_rgba(0.75, 0, 0, 0, 0.92)
     g.add_color_stop_rgba(1, 0, 0, 0, 1)
@@ -166,7 +166,8 @@ def _wrist_fade(hand: dict) -> cairo.LinearGradient:
 
 
 def _finger_fill(ctx: cairo.Context, f: Finger) -> None:
-    # Cylinder shading across the finger, lit from the top of the frame.
+    # Flat skin with a soft shade along the side away from the light (the
+    # top of the frame), like a lightly airbrushed cel.
     p = _lerp(f.K, f.J1, 0.6)
     nx, ny = -f.u[1], f.u[0]
     if ny > 0:
@@ -174,26 +175,12 @@ def _finger_fill(ctx: cairo.Context, f: Finger) -> None:
     h = f.w * 0.5
     g = cairo.LinearGradient(p[0] + nx * h, p[1] + ny * h, p[0] - nx * h, p[1] - ny * h)
     g.add_color_stop_rgb(0.0, *L.SKIN_LIGHT)
-    g.add_color_stop_rgb(0.35, *L.SKIN_LIGHT)
-    g.add_color_stop_rgb(0.6, *L.SKIN)
-    g.add_color_stop_rgb(0.88, *L.SKIN)
+    g.add_color_stop_rgb(0.3, *L.SKIN)
+    g.add_color_stop_rgb(0.72, *L.SKIN)
     g.add_color_stop_rgb(1.0, *L.SKIN_SHADE)
     f.path(ctx)
     ctx.set_source(g)
     ctx.fill()
-    # Ridge highlight along the top of the finger.
-    ctx.save()
-    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-    off = f.w * 0.17
-    a = _lerp(f.K, f.J1, 0.25)
-    ctx.move_to(a[0] + nx * off, a[1] + ny * off)
-    ctx.line_to(f.J1[0] + nx * off * 0.9, f.J1[1] + ny * off * 0.9)
-    b = _lerp(f.J2, f.T, 0.3)
-    ctx.line_to(b[0] + nx * off * 0.8, b[1] + ny * off * 0.8)
-    ctx.set_source_rgba(1, 1, 1, 0.45)
-    ctx.set_line_width(f.w * 0.1)
-    ctx.stroke()
-    ctx.restore()
 
 
 def _arc_across(ctx, center, direction, half, bow) -> None:
@@ -210,48 +197,31 @@ def _finger_details(ctx: cairo.Context, f: Finger) -> None:
     w = f.w
     u1 = _unit(f.J1[0] - f.K[0], f.J1[1] - f.K[1])
     u2 = _unit(f.J2[0] - f.J1[0], f.J2[1] - f.J1[1])
-    # Middle-joint wrinkles (two short lines) and one at the last joint.
-    for off in (-0.05, 0.05):
-        c = (f.J1[0] + u1[0] * w * off, f.J1[1] + u1[1] * w * off)
-        _arc_across(ctx, c, u1, w * 0.17, w * 0.08)
-    _arc_across(ctx, f.J2, u2, w * 0.12, w * 0.06)
-    set_rgb(ctx, L.SKIN_LINE, 0.38)
-    ctx.set_line_width(1.8)
+    # One small crease at each joint, cupped toward the fingertip.
+    ctx.new_path()
+    _arc_across(ctx, f.J1, u1, w * 0.16, -w * 0.07)
+    _arc_across(ctx, f.J2, u2, w * 0.12, -w * 0.05)
+    set_rgb(ctx, L.SKIN_LINE, 0.55)
+    ctx.set_line_width(1.6)
     ctx.stroke()
-    # Nail: rounded at the free edge, set back a little from the tip.
-    nl = w * 0.46 * (1 - 0.35 * f.curl)
-    nw = w * 0.56
+    # Nail: a U open toward the knuckle, its free edge at the fingertip.
+    nl = w * 0.40 * (1 - 0.3 * f.curl)
+    nw = w * 0.46
     ux, uy = f.u3
-    cx = f.T[0] - ux * (nl * 0.5 + w * 0.04)
-    cy = f.T[1] - uy * (nl * 0.5 + w * 0.04)
+    cx = f.T[0] - ux * (nl * 0.5 + w * 0.05)
+    cy = f.T[1] - uy * (nl * 0.5 + w * 0.05)
     ctx.save()
     ctx.translate(cx, cy)
     ctx.rotate(math.atan2(uy, ux))
     ctx.new_path()
-    ctx.move_to(-nl / 2, -nw * 0.42)
-    ctx.curve_to(-nl * 0.2, -nw * 0.52, nl * 0.25, -nw * 0.52, nl * 0.42, -nw * 0.38)
-    ctx.curve_to(nl * 0.62, -nw * 0.18, nl * 0.62, nw * 0.18, nl * 0.42, nw * 0.38)
-    ctx.curve_to(nl * 0.25, nw * 0.52, -nl * 0.2, nw * 0.52, -nl / 2, nw * 0.42)
-    ctx.curve_to(-nl * 0.6, nw * 0.2, -nl * 0.6, -nw * 0.2, -nl / 2, -nw * 0.42)
-    ctx.close_path()
-    g = cairo.LinearGradient(0, -nw / 2, 0, nw / 2)
-    g.add_color_stop_rgb(0, *L.NAIL_LIGHT)
-    g.add_color_stop_rgb(1, *L.NAIL)
-    ctx.set_source(g)
+    ctx.move_to(-nl / 2, -nw / 2)
+    ctx.line_to(nl * 0.1, -nw / 2)
+    ctx.curve_to(nl * 0.62, -nw / 2, nl * 0.62, nw / 2, nl * 0.1, nw / 2)
+    ctx.line_to(-nl / 2, nw / 2)
+    set_rgb(ctx, L.NAIL_LIGHT)
     ctx.fill_preserve()
-    set_rgb(ctx, L.SKIN_LINE, 0.55)
+    set_rgb(ctx, L.SKIN_LINE, 0.75)
     ctx.set_line_width(1.6)
-    ctx.stroke()
-    # Free edge and a glint.
-    ctx.move_to(nl * 0.3, -nw * 0.34)
-    ctx.curve_to(nl * 0.48, -nw * 0.14, nl * 0.48, nw * 0.14, nl * 0.3, nw * 0.34)
-    ctx.set_source_rgba(1, 1, 1, 0.75)
-    ctx.set_line_width(2)
-    ctx.stroke()
-    ctx.move_to(-nl * 0.25, -nw * 0.24)
-    ctx.line_to(nl * 0.05, -nw * 0.27)
-    ctx.set_source_rgba(1, 1, 1, 0.8)
-    ctx.set_line_width(2.4)
     ctx.stroke()
     ctx.restore()
 
@@ -299,88 +269,44 @@ def _draw_hand_local(ctx: cairo.Context, hand: dict, tips, mode: str) -> None:
         return
 
     ctx.push_group()
-    # Pass 1: outlines of every part, so the union has a single contour. The
-    # ink is laid twice, once nudged down-right, so lines are heavier on the
-    # shadow side like a brushed outline.
+    # Pass 1: one thin, even outline around every part, so the union reads
+    # as a single contour once the fills cover the inner halves.
     set_rgb(ctx, L.SKIN_LINE)
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
-    for dx, dy, lw in ((2.2, 3.0, 4.0), (0.0, 0.0, 3.4)):
-        ctx.save()
-        ctx.translate(dx, dy)
-        ctx.new_path()
-        _catmull_rom(ctx, palm, closed=True)
-        ctx.set_line_width(lw)
+    ctx.set_line_width(4.6)
+    ctx.new_path()
+    _catmull_rom(ctx, palm, closed=True)
+    ctx.stroke()
+    for name in reversed(names):
+        fingers[name].path(ctx)
         ctx.stroke()
-        for name in reversed(names):
-            fingers[name].path(ctx)
-            ctx.set_line_width(lw)
-            ctx.stroke()
-        ctx.restore()
 
-    # Pass 2: back of the hand, lit from the index side.
+    # Pass 2: back of the hand, flat skin with a gentle shade on the far side.
     ys = [p[1] for p in palm]
     g = cairo.LinearGradient(0, min(ys), 0, max(ys))
     g.add_color_stop_rgb(0, *L.SKIN_LIGHT)
-    g.add_color_stop_rgb(0.45, *L.SKIN)
+    g.add_color_stop_rgb(0.3, *L.SKIN)
     g.add_color_stop_rgb(0.8, *L.SKIN)
     g.add_color_stop_rgb(1, *L.SKIN_SHADE)
     ctx.new_path()
     _catmull_rom(ctx, palm, closed=True)
     ctx.set_source(g)
-    ctx.fill_preserve()
-    # Broad soft highlight behind the first two knuckles.
-    k1, k2 = fingers[names[0]].K, fingers[names[1]].K
-    hx, hy = (k1[0] + k2[0]) / 2 - 70, (k1[1] + k2[1]) / 2
-    rg = cairo.RadialGradient(hx, hy, 0, hx, hy, 130)
-    rg.add_color_stop_rgba(0, 1, 1, 1, 0.35)
-    rg.add_color_stop_rgba(1, 1, 1, 1, 0)
-    ctx.set_source(rg)
     ctx.fill()
-
-    # Faint tendons running back from each knuckle.
-    wx, wy = hand["wrist"]
-    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-    for name in names:
-        k = fingers[name].K
-        ctx.move_to(k[0] - 30, k[1])
-        ctx.curve_to(k[0] - 90, k[1] + (wy - k[1]) * 0.15, wx + 190, wy + (k[1] - wy) * 0.45,
-                     wx + 130, wy + (k[1] - wy) * 0.35)
-    set_rgb(ctx, L.SKIN_SHADE, 0.22)
-    ctx.set_line_width(7)
-    ctx.stroke()
 
     # Pass 3: fingers, pinky first so the index sits on top.
     for name in reversed(names):
         _finger_fill(ctx, fingers[name])
-    # Soft occlusion in the webbing where fingers meet.
-    for a, b in zip(names, names[1:]):
-        fa, fb = fingers[a], fingers[b]
-        p = _lerp(_lerp(fa.K, fa.J1, 0.3), _lerp(fb.K, fb.J1, 0.3), 0.5)
-        rg = cairo.RadialGradient(p[0], p[1], 0, p[0], p[1], 22)
-        rg.add_color_stop_rgba(0, *L.SKIN_SHADE, 0.75)
-        rg.add_color_stop_rgba(1, *L.SKIN_SHADE, 0)
-        ctx.set_source(rg)
-        ctx.arc(p[0], p[1], 22, 0, 2 * math.pi)
-        ctx.fill()
     for name in names:
         _finger_details(ctx, fingers[name])
 
-    # Knuckle bumps: a highlight with a crease just behind it.
+    # Knuckles: a short light crease behind each.
+    ctx.new_path()
     for name in names:
         f = fingers[name]
-        k = f.K
-        rg = cairo.RadialGradient(k[0], k[1] - 4, 0, k[0], k[1] - 4, f.w * 0.5)
-        rg.add_color_stop_rgba(0, 1, 1, 1, 0.5)
-        rg.add_color_stop_rgba(1, 1, 1, 1, 0)
-        ctx.set_source(rg)
-        ctx.arc(k[0], k[1] - 4, f.w * 0.5, 0, 2 * math.pi)
-        ctx.fill()
-    for name in names:
-        f = fingers[name]
-        c = (f.K[0] - f.u[0] * f.w * 0.42, f.K[1] - f.u[1] * f.w * 0.42)
-        _arc_across(ctx, c, (-f.u[0], -f.u[1]), f.w * 0.16, f.w * 0.07)
-    set_rgb(ctx, L.SKIN_LINE, 0.25)
-    ctx.set_line_width(1.8)
+        c = (f.K[0] - f.u[0] * f.w * 0.35, f.K[1] - f.u[1] * f.w * 0.35)
+        _arc_across(ctx, c, (-f.u[0], -f.u[1]), f.w * 0.15, f.w * 0.06)
+    set_rgb(ctx, L.SKIN_LINE, 0.45)
+    ctx.set_line_width(1.6)
     ctx.stroke()
     ctx.pop_group_to_source()
     ctx.mask(fade)

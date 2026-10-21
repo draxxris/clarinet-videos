@@ -25,12 +25,12 @@ WHITE = (1.0, 1.0, 1.0)
 BG_TOP = hex_rgb("#141226")
 BG_BOTTOM = hex_rgb("#08070e")
 
-SKIN_LIGHT = hex_rgb("#fff3e6")
-SKIN = hex_rgb("#f7dfc6")
-SKIN_SHADE = hex_rgb("#dfb593")
-SKIN_LINE = hex_rgb("#2a201e")
-NAIL = hex_rgb("#f2c3b6")
-NAIL_LIGHT = hex_rgb("#fde4dc")
+SKIN_LIGHT = hex_rgb("#fae4c9")
+SKIN = hex_rgb("#f4d6b3")
+SKIN_SHADE = hex_rgb("#dcae88")
+SKIN_LINE = hex_rgb("#3b2a24")
+NAIL = hex_rgb("#f6dcc4")
+NAIL_LIGHT = hex_rgb("#fbe9d8")
 
 WOOD_EDGE = hex_rgb("#060608")
 WOOD = hex_rgb("#1d1d24")
@@ -130,8 +130,8 @@ KNUCKLES = {
     "L1": (372, 350), "L2": (360, 421), "L3": (366, 490), "L4": (378, 556),
     "R1": (372, 752), "R2": (360, 823), "R3": (366, 892), "R4": (378, 958),
 }
-FINGER_W = {"L1": 66, "L2": 69, "L3": 64, "L4": 54,
-            "R1": 66, "R2": 69, "R3": 64, "R4": 54, "LT": 66}
+FINGER_W = {"L1": 52, "L2": 55, "L3": 51, "L4": 44,
+            "R1": 52, "R2": 55, "R3": 51, "R4": 44, "LT": 52}
 MIRRORED = {"L": False, "R": True}
 
 # The key each finger rests near. Finger lengths come from the rest pose:
