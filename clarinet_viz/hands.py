@@ -13,6 +13,7 @@ import math
 import cairo
 
 from . import layout as L
+from . import rig
 from .draw import set_rgb
 
 
@@ -123,116 +124,70 @@ def _palm_points(hand: dict, fingers: dict[str, Finger]):
     return pts
 
 
-def _sleeve(ctx: cairo.Context, hand: dict, mode: str) -> None:
-    wx, wy = hand["wrist"]
-    half = hand["wrist_half"] + 30
-    ctx.new_path()
-    ctx.move_to(-20, wy - half - 10)
-    ctx.curve_to(wx + 30, wy - half - 14, wx + 64, wy - half + 10, wx + 70, wy - half + 30)
-    ctx.curve_to(wx + 82, wy - 40, wx + 82, wy + 40, wx + 70, wy + half - 30)
-    ctx.curve_to(wx + 64, wy + half - 10, wx + 30, wy + half + 14, -20, wy + half + 10)
-    ctx.close_path()
-    if mode == "silhouette":
-        ctx.fill()
-        return
-    g = cairo.LinearGradient(0, wy - half, 0, wy + half)
-    g.add_color_stop_rgb(0, *L.SLEEVE_LIGHT)
-    g.add_color_stop_rgb(0.45, *L.SLEEVE)
-    g.add_color_stop_rgb(1, *[c * 0.6 for c in L.SLEEVE])
-    ctx.set_source(g)
-    ctx.fill_preserve()
-    set_rgb(ctx, L.INK, 0.8)
-    ctx.set_line_width(2.5)
-    ctx.stroke()
-    # Fabric folds.
-    ctx.set_line_width(2)
-    set_rgb(ctx, (0, 0, 0), 0.25)
-    for k in (-0.45, 0.1, 0.55):
-        ctx.move_to(wx - 30, wy + k * half)
-        ctx.curve_to(wx, wy + k * half - 8, wx + 30, wy + k * half + 6, wx + 60, wy + k * half - 2)
-    ctx.stroke()
+def _wrist_fade(hand: dict) -> cairo.LinearGradient:
+    """Alpha mask that fades the hand out toward the wrist, like a vignette."""
+    wx, _ = hand["wrist"]
+    g = cairo.LinearGradient(wx + 30, 0, wx + 210, 0)
+    g.add_color_stop_rgba(0, 0, 0, 0, 0)
+    g.add_color_stop_rgba(0.75, 0, 0, 0, 0.92)
+    g.add_color_stop_rgba(1, 0, 0, 0, 1)
+    return g
 
 
 def _finger_fill(ctx: cairo.Context, f: Finger) -> None:
     p, _, h = f.at(0.5)
     nx, ny = f.n
-    g = cairo.LinearGradient(p[0] + nx * h * 1.1, p[1] + ny * h * 1.1,
-                             p[0] - nx * h * 1.1, p[1] - ny * h * 1.1)
+    g = cairo.LinearGradient(p[0] + nx * h, p[1] + ny * h, p[0] - nx * h, p[1] - ny * h)
     g.add_color_stop_rgb(0.0, *L.SKIN_LIGHT)
-    g.add_color_stop_rgb(0.3, *L.SKIN_LIGHT)
-    g.add_color_stop_rgb(0.55, *L.SKIN)
-    g.add_color_stop_rgb(0.85, *L.SKIN_SHADE)
-    g.add_color_stop_rgb(1.0, *L.SKIN_DEEP)
+    g.add_color_stop_rgb(0.45, *L.SKIN)
+    g.add_color_stop_rgb(0.82, *L.SKIN)
+    g.add_color_stop_rgb(1.0, *L.SKIN_SHADE)
     f.path(ctx)
     ctx.set_source(g)
     ctx.fill()
 
 
+def _crease(ctx: cairo.Context, f: Finger, s: float, spread: float) -> None:
+    """One small curved line across the finger, bowed toward the tip."""
+    p, t, h = f.at(s)
+    nx, ny = -t[1], t[0]
+    a = (p[0] + nx * h * spread, p[1] + ny * h * spread)
+    b = (p[0] - nx * h * spread, p[1] - ny * h * spread)
+    bow = h * 0.35
+    ctx.move_to(*a)
+    ctx.curve_to(a[0] + t[0] * bow, a[1] + t[1] * bow, b[0] + t[0] * bow, b[1] + t[1] * bow, *b)
+
+
 def _finger_details(ctx: cairo.Context, f: Finger, pressed: float) -> None:
-    w = f.width
-    # Knuckle creases at the middle and end joints.
     ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-    for s, count, spread in ((0.52, 3, 0.55), (0.78, 2, 0.45)):
-        p, t, h = f.at(s)
-        nx, ny = -t[1], t[0]
-        for i in range(count):
-            off = (i - (count - 1) / 2) * 5.5
-            cx, cy = p[0] + t[0] * off, p[1] + t[1] * off
-            a = (cx + nx * h * spread, cy + ny * h * spread)
-            b = (cx - nx * h * spread, cy - ny * h * spread)
-            c = (cx + t[0] * 3.5, cy + t[1] * 3.5)
-            ctx.move_to(*a)
-            ctx.curve_to(c[0] + nx * h * 0.2, c[1] + ny * h * 0.2,
-                         c[0] - nx * h * 0.2, c[1] - ny * h * 0.2, *b)
-        set_rgb(ctx, L.SKIN_LINE, 0.42)
-        ctx.set_line_width(1.7)
-        ctx.stroke()
-    # Soft highlight over each joint.
-    for s in (0.52, 0.78):
-        p, t, h = f.at(s)
-        nx, ny = f.n
-        hx, hy = p[0] + nx * h * 0.35, p[1] + ny * h * 0.35
-        g = cairo.RadialGradient(hx, hy, 0, hx, hy, h * 0.9)
-        g.add_color_stop_rgba(0, 1, 0.93, 0.86, 0.45)
-        g.add_color_stop_rgba(1, 1, 0.93, 0.86, 0)
-        ctx.set_source(g)
-        ctx.arc(hx, hy, h * 0.9, 0, 2 * math.pi)
-        ctx.fill()
-    # Nail.
-    p, t, h = f.at(0.9)
-    ang = math.atan2(t[1], t[0])
-    ctx.save()
-    ctx.translate(*p)
-    ctx.rotate(ang)
-    nl, nw = w * 0.5, h * 1.2
+    # Joint creases, drawn as short ink strokes.
+    _crease(ctx, f, 0.5, 0.3)
+    _crease(ctx, f, 0.77, 0.22)
+    set_rgb(ctx, L.SKIN_LINE, 0.5)
+    ctx.set_line_width(2)
+    ctx.stroke()
+    # Nail: a U-shaped line following the fingertip, open toward the hand.
+    t = f.tangent[-1]
+    cx, cy = f.center[-1]
+    h = f.half[-1]
+    r = h * 0.62
+    cx, cy = cx - t[0] * h * 0.12, cy - t[1] * h * 0.12
+    ang = math.atan2(t[0], -t[1])
+    leg = f.width * 0.32
+    nxl, nyl = math.cos(ang), math.sin(ang)
     ctx.new_path()
-    ctx.move_to(-nl / 2, -nw / 2)
-    ctx.line_to(nl * 0.25, -nw / 2)
-    ctx.curve_to(nl * 0.6, -nw / 2, nl * 0.62, nw / 2, nl * 0.25, nw / 2)
-    ctx.line_to(-nl / 2, nw / 2)
-    ctx.curve_to(-nl * 0.62, nw * 0.3, -nl * 0.62, -nw * 0.3, -nl / 2, -nw / 2)
-    ctx.close_path()
-    g = cairo.LinearGradient(0, -nw / 2, 0, nw / 2)
-    g.add_color_stop_rgb(0, *[min(1, c * 1.06) for c in L.NAIL])
-    g.add_color_stop_rgb(0.6, *L.NAIL)
-    g.add_color_stop_rgb(1, *L.NAIL_SHADE)
-    ctx.set_source(g)
+    ctx.move_to(cx + nxl * r - t[0] * leg, cy + nyl * r - t[1] * leg)
+    ctx.line_to(cx + nxl * r, cy + nyl * r)
+    ctx.arc_negative(cx, cy, r, ang, ang - math.pi)
+    ctx.line_to(cx - nxl * r - t[0] * leg, cy - nyl * r - t[1] * leg)
+    ctx.curve_to(cx - t[0] * leg * 1.25 - nxl * r * 0.4, cy - t[1] * leg * 1.25 - nyl * r * 0.4,
+                 cx - t[0] * leg * 1.25 + nxl * r * 0.4, cy - t[1] * leg * 1.25 + nyl * r * 0.4,
+                 cx + nxl * r - t[0] * leg, cy + nyl * r - t[1] * leg)
+    set_rgb(ctx, L.NAIL, 0.55)
     ctx.fill_preserve()
-    set_rgb(ctx, L.SKIN_LINE, 0.6)
-    ctx.set_line_width(1.4)
+    set_rgb(ctx, L.SKIN_LINE, 0.85)
+    ctx.set_line_width(2)
     ctx.stroke()
-    # Free edge and shine.
-    ctx.move_to(nl * 0.3, -nw * 0.42)
-    ctx.curve_to(nl * 0.55, -nw * 0.3, nl * 0.55, nw * 0.3, nl * 0.3, nw * 0.42)
-    set_rgb(ctx, (1, 1, 1), 0.55)
-    ctx.set_line_width(2.2)
-    ctx.stroke()
-    ctx.move_to(-nl * 0.3, -nw * 0.22)
-    ctx.line_to(nl * 0.1, -nw * 0.26)
-    set_rgb(ctx, (1, 1, 1), 0.7)
-    ctx.set_line_width(2.4)
-    ctx.stroke()
-    ctx.restore()
 
 
 def build_fingers(tips: dict[str, tuple[tuple[float, float], float]], names) -> dict[str, Finger]:
@@ -243,24 +198,41 @@ def build_fingers(tips: dict[str, tuple[tuple[float, float], float]], names) -> 
     return out
 
 
-def draw_hand(ctx: cairo.Context, hand_key: str, tips, mode: str = "full") -> None:
-    """mode 'full' draws the shaded hand; 'silhouette' fills its shape with
-    the current source (used for the shadow)."""
+def draw_hand(ctx: cairo.Context, hand_key: str, tips, pose: "rig.Pose", mode: str = "full") -> None:
+    """mode 'full' draws the inked, shaded hand; 'silhouette' fills its shape
+    with the current source (used for the shadow). Either way the hand fades
+    out toward the wrist."""
     hand = L.HANDS[hand_key]
+    names = hand["fingers"]
+    # Build the hand in its rest-pose frame, then let the ctx transform place it.
+    local = {f: (rig.to_local(hand_key, pose, tips[f][0]), tips[f][1]) for f in names}
+    ctx.save()
+    rig.apply(ctx, hand_key, pose)
+    _draw_hand_local(ctx, hand, local, mode)
+    ctx.restore()
+
+
+def _draw_hand_local(ctx: cairo.Context, hand: dict, tips, mode: str) -> None:
     names = hand["fingers"]
     fingers = build_fingers(tips, names)
     palm = _palm_points(hand, fingers)
+    fade = _wrist_fade(hand)
 
     if mode == "silhouette":
+        src = ctx.get_source()
+        ctx.push_group()
+        ctx.set_source(src)
         ctx.new_path()
         _catmull_rom(ctx, palm, closed=True)
         ctx.fill()
         for f in fingers.values():
             f.path(ctx)
             ctx.fill()
-        _sleeve(ctx, hand, mode)
+        ctx.pop_group_to_source()
+        ctx.mask(fade)
         return
 
+    ctx.push_group()
     # Pass 1: outlines of every part, so the union has a single contour.
     set_rgb(ctx, L.SKIN_LINE)
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
@@ -270,15 +242,15 @@ def draw_hand(ctx: cairo.Context, hand_key: str, tips, mode: str = "full") -> No
     ctx.stroke()
     for f in fingers.values():
         f.path(ctx)
-        ctx.set_line_width(4.5)
+        ctx.set_line_width(5)
         ctx.stroke()
 
-    # Pass 2: palm fill.
-    wx, wy = hand["wrist"]
+    # Pass 2: palm fill, lit from above with a soft shade along the bottom.
     ys = [p[1] for p in palm]
     g = cairo.LinearGradient(0, min(ys), 0, max(ys))
     g.add_color_stop_rgb(0, *L.SKIN_LIGHT)
-    g.add_color_stop_rgb(0.45, *L.SKIN)
+    g.add_color_stop_rgb(0.5, *L.SKIN)
+    g.add_color_stop_rgb(0.85, *L.SKIN)
     g.add_color_stop_rgb(1, *L.SKIN_SHADE)
     ctx.new_path()
     _catmull_rom(ctx, palm, closed=True)
@@ -291,23 +263,23 @@ def draw_hand(ctx: cairo.Context, hand_key: str, tips, mode: str = "full") -> No
     for name in names:
         _finger_details(ctx, fingers[name], tips[name][1])
 
-    # Back-of-hand details: knuckle highlights and tendons.
+    # Knuckle marks on the back of the hand.
     ctx.set_line_cap(cairo.LINE_CAP_ROUND)
     for name in names:
+        f = fingers[name]
         k = L.KNUCKLES[name]
-        g = cairo.RadialGradient(k[0] - 6, k[1] - 6, 0, k[0] - 6, k[1] - 6, 26)
-        g.add_color_stop_rgba(0, 1, 0.95, 0.9, 0.55)
-        g.add_color_stop_rgba(1, 1, 0.95, 0.9, 0)
-        ctx.set_source(g)
-        ctx.arc(k[0] - 6, k[1] - 6, 26, 0, 2 * math.pi)
-        ctx.fill()
-        ctx.move_to(k[0] - 30, k[1])
-        ctx.curve_to(k[0] - 90, k[1] + (wy - k[1]) * 0.25, wx + 150, wy + (k[1] - wy) * 0.35,
-                     wx + 100, wy + (k[1] - wy) * 0.25)
-        set_rgb(ctx, L.SKIN_SHADE, 0.35)
-        ctx.set_line_width(5)
-        ctx.stroke()
-    _sleeve(ctx, hand, mode)
+        ux, uy = f.u
+        nx, ny = -uy, ux
+        c = (k[0] - ux * 26, k[1] - uy * 26)
+        h = f.width * 0.18
+        ctx.move_to(c[0] + nx * h, c[1] + ny * h)
+        ctx.curve_to(c[0] + nx * h - ux * 8, c[1] + ny * h - uy * 8,
+                     c[0] - nx * h - ux * 8, c[1] - ny * h - uy * 8, c[0] - nx * h, c[1] - ny * h)
+    set_rgb(ctx, L.SKIN_LINE, 0.35)
+    ctx.set_line_width(2)
+    ctx.stroke()
+    ctx.pop_group_to_source()
+    ctx.mask(fade)
 
 
 def draw_thumb(ctx: cairo.Context, base, tip, pressed: float, mode: str = "full") -> None:
@@ -319,11 +291,11 @@ def draw_thumb(ctx: cairo.Context, base, tip, pressed: float, mode: str = "full"
         return
     f.path(ctx)
     set_rgb(ctx, L.SKIN_LINE)
-    ctx.set_line_width(4.5)
+    ctx.set_line_width(5)
     ctx.stroke()
     _finger_fill(ctx, f)
     _finger_details(ctx, f, pressed)
     # It sits in the shadow behind the clarinet.
     f.path(ctx)
-    set_rgb(ctx, (0.1, 0.05, 0.05), 0.42)
+    set_rgb(ctx, (0.05, 0.04, 0.08), 0.2)
     ctx.fill()

@@ -15,9 +15,12 @@ python -m clarinet_viz examples/ode_to_joy.musicxml -o ode_to_joy.mp4
   hole and thumb rest are on the back, so they're drawn dashed. Keys for the
   *next* note pulse in their finger colour as it approaches, and keys in use
   glow while they're held.
-- **Hands**: shaded hands reach in from the left and cast soft shadows on the
-  instrument. Fingers cover holes and press levers, and pull back off the
-  holes they aren't using. The thumbs sit behind the instrument.
+- **Hands**: inked hands with soft shading reach in from the left, fade out
+  at the wrist, and cast soft shadows on the instrument. Each hand is a rigid
+  2D rig: it shifts and rotates as one piece so the fingers can reach their
+  keys, and fingers keep their length, only curling back (toward the viewer)
+  off holes they aren't covering. Side keys are pressed by rolling the index
+  finger. The thumbs sit behind the instrument.
 - **Note highway** (right): one horizontal lane per finger, lined up with the
   keys it plays and colour coded the same on both hands (thumb orange, index
   green, middle red, ring yellow, pinky blue). Notes scroll in from the right
@@ -83,8 +86,9 @@ Finale, Sibelius, Dorico, etc.).
 - `clarinet_viz/audio.py` writes a MIDI file at concert pitch and renders it
   with FluidSynth using the soundfont's clarinet patch (GM program 72). Without
   FluidSynth it falls back to a simple additive synth.
-- `clarinet_viz/scene.py` draws each frame with cairo, `hands.py` builds and
-  shades the hands, `layout.py` holds all positions and colours, and
+- `clarinet_viz/scene.py` draws each frame with cairo, `rig.py` poses each
+  hand (a small least-squares fit so pressing fingers can reach), `hands.py`
+  draws them, `layout.py` holds all positions and colours, and
   `render.py` pipes raw frames to ffmpeg with the audio.
 
 ## Limitations

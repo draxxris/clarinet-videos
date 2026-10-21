@@ -22,19 +22,14 @@ def hex_rgb(h: str) -> tuple[float, float, float]:
 
 INK = hex_rgb("#141218")
 WHITE = (1.0, 1.0, 1.0)
-BG_TOP = hex_rgb("#efe9df")
-BG_BOTTOM = hex_rgb("#d9d0c2")
-BG_DOT = hex_rgb("#cfc4b3")
+BG_TOP = hex_rgb("#141226")
+BG_BOTTOM = hex_rgb("#08070e")
 
-SKIN_LIGHT = hex_rgb("#f6cfae")
-SKIN = hex_rgb("#e7aa82")
-SKIN_SHADE = hex_rgb("#c27f5a")
-SKIN_DEEP = hex_rgb("#8f5338")
-SKIN_LINE = hex_rgb("#6e3b26")
-NAIL = hex_rgb("#f3c7bb")
-NAIL_SHADE = hex_rgb("#d79c90")
-SLEEVE = hex_rgb("#26314f")
-SLEEVE_LIGHT = hex_rgb("#3c4a73")
+SKIN_LIGHT = hex_rgb("#fff3e6")
+SKIN = hex_rgb("#f7dfc6")
+SKIN_SHADE = hex_rgb("#dfb593")
+SKIN_LINE = hex_rgb("#2a201e")
+NAIL = hex_rgb("#f9d2c6")
 
 WOOD_EDGE = hex_rgb("#060608")
 WOOD = hex_rgb("#1d1d24")
@@ -134,20 +129,19 @@ KNUCKLES = {
 FINGER_W = {"L1": 52, "L2": 54, "L3": 50, "L4": 42,
             "R1": 52, "R2": 54, "R3": 50, "R4": 42, "LT": 56}
 
-# Where a fingertip rests when it is not pressing anything: pulled back off
-# the hole so the open hole is visible.
-HOVER = {
-    "L1": (468, 342), "L2": (462, 424), "L3": (466, 506), "L4": (418, 612),
-    "R1": (468, 744), "R2": (462, 828), "R3": (466, 910), "R4": (418, 1000),
-    "LT": (470, 300),
-}
+# The key each finger rests near. Finger lengths come from the rest pose:
+# each fingertip reaches its home key at REACH of the finger's full length.
+HOME = {"LT": "T", "L1": "L1", "L2": "L2", "L3": "L3", "L4": "LFS",
+        "R1": "R1", "R2": "R2", "R3": "R3", "R4": "RF"}
+REACH = 0.93
+CURL = 0.62  # a lifted finger curls toward the viewer to this share of its length
 
 # Back of each hand: knuckle side is on the right, wrist off to the left.
 HANDS = {
     "L": {"wrist": (40, 452), "wrist_half": 118, "fingers": ["L1", "L2", "L3", "L4"],
-          "thumb_base": (232, 440)},
+          "thumb_base": (232, 440), "pivot": (190, 450)},
     "R": {"wrist": (40, 856), "wrist_half": 118, "fingers": ["R1", "R2", "R3", "R4"],
-          "thumb_base": (232, 846)},
+          "thumb_base": (232, 846), "pivot": (190, 856)},
 }
 RH_THUMB_TIP = (BODY_X - 6, THUMB_REST_Y + 8)
 
