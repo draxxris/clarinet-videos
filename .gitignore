@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+# Rendered output stays out of the repo.
+*.mp4
+*.mov
+*.wav
+*.mid
+*.png
+out/
