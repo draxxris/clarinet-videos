@@ -1,7 +1,7 @@
 # clarinet-videos
 
 Turn **Bb clarinet sheet music (MusicXML)** into a play-along video: a comic-book
-style clarinet with hands that finger each note, a Rock Band style note highway
+style clarinet whose keys light up for each note, a Rock Band style note highway
 that shows what's coming, a scrolling staff, and audio, all exported to MP4.
 
 ```
@@ -15,18 +15,8 @@ python -m clarinet_viz examples/ode_to_joy.musicxml -o ode_to_joy.mp4
   hole and thumb rest are on the back, so they're drawn dashed. Keys for the
   *next* note pulse in their finger colour as it approaches, and keys in use
   glow while they're held.
-- **Hands**: flat, thinly inked hands seen from above, as the player sees
-  them: the left hand on the upper joint comes in from the left, the right
-  hand on the lower joint from the right. They fade out at the wrist and cast
-  soft shadows on the instrument. Each hand is a rigid 2D rig that shifts and
-  rotates as one piece so the fingers can reach their keys; fingers are three
-  jointed segments of fixed length that curl (foreshorten) off holes they
-  aren't covering. Side keys are pressed by rolling the index finger. The
-  left thumb reaches under the hand to the back of the instrument and shows
-  through faintly where the tube hides it, moving between the thumb hole and
-  register key; the right thumb (on the thumb rest) isn't drawn.
-- **Note highway** (right, drawn over the right hand): one horizontal lane per finger, lined up with the
-  keys it plays and colour coded the same on both hands (thumb orange, index
+- **Note highway** (right): one horizontal lane per finger, lined up with the
+  keys it plays and colour coded the same for both hands (thumb orange, index
   green, middle red, ring yellow, pinky blue). Notes scroll in from the right
   to the strike line beside the clarinet; a gem's length is how long to hold
   it. Lever gems are labelled (`A`, `G#`, `T+Reg`, `E`, `F`, `Ab`, `Eb` ...).
@@ -90,9 +80,8 @@ Finale, Sibelius, Dorico, etc.).
 - `clarinet_viz/audio.py` writes a MIDI file at concert pitch and renders it
   with FluidSynth using the soundfont's clarinet patch (GM program 72). Without
   FluidSynth it falls back to a simple additive synth.
-- `clarinet_viz/scene.py` draws each frame with cairo, `rig.py` poses each
-  hand (a small least-squares fit so pressing fingers can reach), `hands.py`
-  draws them, `layout.py` holds all positions and colours, and
+- `clarinet_viz/scene.py` draws each frame with cairo, `layout.py` holds all
+  positions and colours, and
   `render.py` pipes raw frames to ffmpeg with the audio.
 
 ## Limitations

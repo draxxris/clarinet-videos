@@ -8,19 +8,17 @@ from clarinet_viz.score import load_score
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
 
 
-def test_frames_render_and_fingers_press():
+def test_frames_render_and_first_fingering():
     s = load_score(EXAMPLES / "ode_to_joy.musicxml")
     scene = Scene(s, lead_in=1.0)
     surf, ctx = make_surface(320, 180)
     for t in (0.0, 1.0, 1.3, 20.0, scene.duration - 0.1):
         scene.render(ctx, t)
-    # First note E4 = thumb + left index: index finger is down mid-note.
+    # First note E4 = thumb + left index, and it is the one sounding mid-note.
     first = scene.events[0]
-    mid = (first.start + first.end) / 2
-    _, pressed = scene.finger_tip("L1", mid)
-    assert pressed == 1.0
-    _, pressed = scene.finger_tip("L2", mid)
-    assert pressed == 0.0
+    cur, _ = scene.current((first.start + first.end) / 2)
+    assert cur is first
+    assert set(first.by_finger) == {"LT", "L1"}
 
 
 def test_midi_written_at_concert_pitch(tmp_path):

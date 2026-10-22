@@ -1,5 +1,5 @@
-"""Draws one frame of the video: scrolling staff, note highway, clarinet,
-hands and the now-playing panel."""
+"""Draws one frame of the video: scrolling staff, note highway, clarinet
+and the now-playing panel."""
 
 from __future__ import annotations
 
@@ -12,17 +12,12 @@ import cairo
 import numpy as np
 
 from . import draw as D
-from . import hands
 from . import layout as L
-from . import rig
 from .fingerings import FINGERS, KEYS, fingering_for
 from .score import Note, Score
 
-TRANS = 0.075          # seconds a finger takes to move to its next position
-HAND_TRANS = 0.14      # seconds the whole hand takes to shift
 UPCOMING_WINDOW = 0.9  # seconds ahead that keys start glowing
 IMPACT_TIME = 0.2      # seconds the "press" burst lasts
-SHADOW_SCALE = 4       # shadow layer is rendered at 1/4 size and blurred
 
 
 @dataclass
@@ -44,27 +39,6 @@ def register_name(written_midi: int) -> str:
     return "Altissimo"
 
 
-def _blur_alpha(surf: cairo.ImageSurface, radius: int, passes: int = 3) -> None:
-    """In-place box blur of an A8/ARGB surface's alpha (black shadow)."""
-    surf.flush()
-    h, stride = surf.get_height(), surf.get_stride()
-    buf = np.ndarray((h, stride // 4, 4), dtype=np.uint8, buffer=surf.get_data())
-    a = buf[:, :, 3].astype(np.float32)
-    k = 2 * radius + 1
-    for _ in range(passes):
-        for axis in (0, 1):
-            pad = [(0, 0), (0, 0)]
-            pad[axis] = (radius + 1, radius)
-            c = np.cumsum(np.pad(a, pad, mode="edge"), axis=axis)
-            if axis == 0:
-                a = (c[k:] - c[:-k]) / k
-            else:
-                a = (c[:, k:] - c[:, :-k]) / k
-    buf[:, :, :3] = 0
-    buf[:, :, 3] = np.clip(a, 0, 255).astype(np.uint8)
-    surf.mark_dirty()
-
-
 class Scene:
     def __init__(self, score: Score, lead_in: float = 2.5, tail: float = 1.5,
                  lookahead: float | None = None, show_concert: bool = True):
@@ -84,11 +58,8 @@ class Scene:
                 by_finger.setdefault(KEYS[k].finger, []).append(k)
             self.events.append(Event(n.start + lead_in, n.end + lead_in, n, fing, by_finger))
         self._starts = [e.start for e in self.events]
-        self._build_finger_tracks()
         self._bg: cairo.ImageSurface | None = None
         self._body: cairo.ImageSurface | None = None
-        self._shadow = cairo.ImageSurface(cairo.FORMAT_ARGB32, L.W // SHADOW_SCALE,
-                                          L.H // SHADOW_SCALE)
 
     # ------------------------------------------------------------------ timing
 
@@ -116,87 +87,6 @@ class Scene:
     def time_x(self, t_video: float, now: float) -> float:
         return L.STRIKE_X + (t_video - now) * self.pps
 
-    # ------------------------------------------------------------------ fingers
-
-    def _press_pose(self, finger: str, keys: list[str]) -> tuple[float, float]:
-        pts = [L.KEY_POS[k] for k in keys]
-        if finger == "LT" and set(keys) == {"T", "REG"}:
-            # Thumb covers the hole and rolls up onto the register key.
-            return (pts[0][0] - 4, (pts[0][1] + pts[1][1]) / 2 + 4)
-        if all(p[2] in ("side", "side_lever") for p in pts):
-            # Side keys are pressed with the side of the index finger, which
-            # stays near its own hole and rolls toward the key.
-            hx, hy, _ = L.KEY_POS[L.HOME[finger]]
-            ky = sum(p[1] for p in pts) / len(pts)
-            kx = sum(p[0] for p in pts) / len(pts)
-            return hx + math.copysign(8, kx - hx), hy + max(-18, min(18, ky - hy))
-        holes = [p for p in pts if p[2] in ("hole", "back_hole")]
-        if holes:
-            return holes[0][0], holes[0][1]
-        return (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
-
-    def _build_finger_tracks(self) -> None:
-        """Keyframes per finger (key it presses, or None = lifted) and per hand
-        (rigid pose that lets the pressing fingers reach their keys)."""
-        self.tracks: dict[str, list[tuple[float, tuple[float, float] | None, bool]]] = {
-            f: [(-1e9, None, False)] for f in FINGERS}
-        self.hand_tracks: dict[str, list[tuple[float, rig.Pose]]] = {
-            h: [(-1e9, rig.REST)] for h in rig.HAND_FINGERS}
-        solved: dict[tuple, rig.Pose] = {}
-        for i, ev in enumerate(self.events):
-            nxt = self.events[i + 1].start if i + 1 < len(self.events) else math.inf
-            rest_after = nxt - ev.end > 3 * TRANS
-            presses = {f: self._press_pose(f, keys) for f, keys in ev.by_finger.items()}
-            for f in FINGERS:
-                self.tracks[f].append((ev.start, presses.get(f), f in presses))
-                if rest_after:
-                    self.tracks[f].append((ev.end + TRANS, None, False))
-            for h, fingers in rig.HAND_FINGERS.items():
-                targets = {f: presses[f] for f in fingers if f in presses}
-                key = (h, tuple(sorted(targets.items())))
-                if key not in solved:
-                    solved[key] = rig.solve_pose(h, targets)
-                self.hand_tracks[h].append((ev.start, solved[key]))
-                if rest_after:
-                    self.hand_tracks[h].append((ev.end + HAND_TRANS, rig.REST))
-        self._track_times = {f: [k[0] for k in tr] for f, tr in self.tracks.items()}
-        self._hand_times = {h: [k[0] for k in tr] for h, tr in self.hand_tracks.items()}
-
-    @staticmethod
-    def _blend_u(t, t0, t1, trans) -> float:
-        window = min(trans, (t1 - t0) * 0.5)
-        return D.smoothstep((t - (t1 - window)) / window) if window > 0 else 0.0
-
-    def hand_pose(self, hand: str, t: float) -> rig.Pose:
-        track = self.hand_tracks[hand]
-        i = bisect.bisect_right(self._hand_times[hand], t) - 1
-        t0, p0 = track[i]
-        if i + 1 >= len(track):
-            return p0
-        t1, p1 = track[i + 1]
-        return p0.blend(p1, self._blend_u(t, t0, t1, HAND_TRANS))
-
-    def finger_tip(self, finger: str, t: float) -> tuple[tuple[float, float], float]:
-        """Fingertip position at t, and how 'pressed' it is (0..1)."""
-        pose = self.hand_pose(rig.FINGER_HAND[finger], t)
-        hover = rig.hover_tip(finger, pose)
-        track = self.tracks[finger]
-        i = bisect.bisect_right(self._track_times[finger], t) - 1
-        t0, p0, on0 = track[i]
-        p0 = p0 or hover
-        if i + 1 >= len(track):
-            return rig.clamp_tip(finger, pose, p0), float(on0)
-        t1, p1, on1 = track[i + 1]
-        p1 = p1 or hover
-        u = self._blend_u(t, t0, t1, TRANS)
-        pos = (p0[0] + (p1[0] - p0[0]) * u, p0[1] + (p1[1] - p0[1]) * u)
-        if p0 != p1 and on0 and on1 and 0 < u < 1:
-            # Moving from one key to another: curl up off the instrument on the way.
-            k = rig.to_world(rig.FINGER_HAND[finger], pose, rig.base_of(finger))
-            lift = math.sin(u * math.pi) * 0.25
-            pos = (pos[0] + (k[0] - pos[0]) * lift, pos[1] + (k[1] - pos[1]) * lift)
-        return rig.clamp_tip(finger, pose, pos), float(on0) + (float(on1) - float(on0)) * u
-
     # ------------------------------------------------------------------ frame
 
     def render(self, ctx: cairo.Context, t: float) -> None:
@@ -210,17 +100,10 @@ class Scene:
         ctx.paint()
         cur, nxt_i = self.current(t)
         nxt = self.events[nxt_i] if nxt_i < len(self.events) else None
-        tips = {f: self.finger_tip(f, t) for f in FINGERS}
-        poses = {h: self.hand_pose(h, t) for h in rig.HAND_FINGERS}
 
         ctx.set_source_surface(self._body, 0, 0)
         ctx.paint()
         self._draw_keys(ctx, t, cur, nxt)
-        self._draw_thumb(ctx, tips["LT"][0], poses["L"])
-        self._draw_shadow(ctx, tips, poses)
-        for hand in ("L", "R"):
-            hands.draw_hand(ctx, hand, tips, poses[hand])
-        # The highway sits on top of the right hand, beside the instrument.
         ctx.set_source_surface(self._highway, 0, 0)
         ctx.paint()
         self._draw_highway(ctx, t, cur)
@@ -257,7 +140,7 @@ class Scene:
         return surf
 
     def _render_overlay(self) -> cairo.ImageSurface:
-        """Panels that sit on top of the instrument and hands."""
+        """Panels that sit on top of the instrument."""
         surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, L.W, L.H)
         ctx = cairo.Context(surf)
         self._draw_staff_static(ctx)
@@ -440,7 +323,7 @@ class Scene:
     # highway -----------------------------------------------------------------
 
     def _draw_lane_guides(self, ctx) -> None:
-        """Dashed guides from each finger's keys toward its lane (under the hands)."""
+        """Dashed guides from each finger's keys toward its lane."""
         for f in FINGERS:
             ly = L.LANE_Y[f]
             ctx.move_to(L.BODY_RIGHT + 14, ly)
@@ -738,11 +621,22 @@ class Scene:
                 else:
                     self._metal_fill(ctx, x - L.HOLE_R - 7, x + L.HOLE_R + 7)
                     ctx.new_path()
+                ctx.arc(x, y, L.HOLE_R, 0, 2 * math.pi)
+                if on:
+                    # Covered: the hole is filled in with the finger's colour.
+                    g = cairo.RadialGradient(x - 6, y - 6, 2, x, y, L.HOLE_R)
+                    g.add_color_stop_rgb(0, *D.lighten(col, 0.6))
+                    g.add_color_stop_rgb(1, *col)
+                    ctx.set_source(g)
+                    ctx.fill_preserve()
+                    D.set_rgb(ctx, L.INK)
+                    ctx.set_line_width(2.5)
+                    ctx.stroke()
+                    continue
                 g = cairo.RadialGradient(x - 4, y - 4, 2, x, y, L.HOLE_R)
                 g.add_color_stop_rgb(0, 0.0, 0.0, 0.0)
                 g.add_color_stop_rgb(0.75, 0.05, 0.05, 0.07)
                 g.add_color_stop_rgb(1, 0.22, 0.22, 0.26)
-                ctx.arc(x, y, L.HOLE_R, 0, 2 * math.pi)
                 ctx.set_source(g)
                 ctx.fill()
                 continue
@@ -777,48 +671,6 @@ class Scene:
                        color=L.WHITE if (on or back) else L.INK)
             elif kind == "side_lever" or key == "S4":
                 D.text(ctx, label, x + 18, y + 5, 13, font=text_font, color=L.INK)
-
-    # hands -------------------------------------------------------------------
-
-    def _draw_thumb(self, ctx, tip, pose) -> None:
-        """The left thumb works the back of the instrument: solid beside the
-        tube, faint where the tube hides it."""
-        ctx.push_group()
-        hands.draw_thumb(ctx, tip, pose)
-        thumb = ctx.pop_group()
-        ctx.save()
-        ctx.rectangle(0, 0, L.W, L.H)
-        ctx.rectangle(L.BODY_RIGHT, 0, L.BODY_LEFT - L.BODY_RIGHT, L.H)
-        ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
-        ctx.clip()
-        ctx.set_source(thumb)
-        ctx.paint()
-        ctx.restore()
-        ctx.save()
-        ctx.rectangle(L.BODY_LEFT, 0, L.BODY_RIGHT - L.BODY_LEFT, L.H)
-        ctx.clip()
-        ctx.set_source(thumb)
-        ctx.paint_with_alpha(L.THUMB_BEHIND_ALPHA)
-        ctx.restore()
-
-    def _draw_shadow(self, ctx, tips, poses) -> None:
-        sh = self._shadow
-        sctx = cairo.Context(sh)
-        sctx.set_operator(cairo.OPERATOR_CLEAR)
-        sctx.paint()
-        sctx.set_operator(cairo.OPERATOR_OVER)
-        sctx.scale(1 / SHADOW_SCALE, 1 / SHADOW_SCALE)
-        sctx.set_source_rgba(0, 0, 0, 1)
-        for hand in ("L", "R"):
-            hands.draw_hand(sctx, hand, tips, poses[hand], mode="silhouette")
-        _blur_alpha(sh, radius=3)
-        ctx.save()
-        ctx.translate(*L.SHADOW_OFFSET)
-        ctx.scale(SHADOW_SCALE, SHADOW_SCALE)
-        ctx.set_source_surface(sh, 0, 0)
-        ctx.get_source().set_filter(cairo.FILTER_BILINEAR)
-        ctx.paint_with_alpha(0.5)
-        ctx.restore()
 
     # panel -------------------------------------------------------------------
 

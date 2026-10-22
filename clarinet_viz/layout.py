@@ -25,13 +25,6 @@ WHITE = (1.0, 1.0, 1.0)
 BG_TOP = hex_rgb("#141226")
 BG_BOTTOM = hex_rgb("#08070e")
 
-SKIN_LIGHT = hex_rgb("#fae4c9")
-SKIN = hex_rgb("#f4d6b3")
-SKIN_SHADE = hex_rgb("#dcae88")
-SKIN_LINE = hex_rgb("#3b2a24")
-NAIL = hex_rgb("#f6dcc4")
-NAIL_LIGHT = hex_rgb("#fbe9d8")
-
 WOOD_EDGE = hex_rgb("#060608")
 WOOD = hex_rgb("#1d1d24")
 WOOD_MID = hex_rgb("#34364a")
@@ -119,39 +112,3 @@ STAFF_SPACE = 13
 NAME_ROW_Y = 184                       # note-name tags between staff and lanes
 
 NOW_PANEL = (16, 12, 436, 158)
-
-# --- hands ---------------------------------------------------------------
-
-# Knuckle (MCP joint) of each finger, in each hand's own frame. Both hands
-# are modelled reaching in from the left; the right hand is mirrored across
-# the instrument so it comes in from the right, as seen looking down at the
-# clarinet while playing.
-KNUCKLES = {
-    "L1": (424, 350), "L2": (412, 421), "L3": (418, 490), "L4": (420, 556),
-    "R1": (424, 752), "R2": (412, 823), "R3": (418, 892), "R4": (420, 958),
-}
-FINGER_W = {"L1": 52, "L2": 55, "L3": 51, "L4": 44,
-            "R1": 52, "R2": 55, "R3": 51, "R4": 44, "LT": 52}
-MIRRORED = {"L": False, "R": True}
-
-# The key each finger rests near. Finger lengths come from the rest pose:
-# each fingertip reaches its home key at REACH of the finger's full length.
-HOME = {"LT": "T", "L1": "L1", "L2": "L2", "L3": "L3", "L4": "LFS",
-        "R1": "R1", "R2": "R2", "R3": "R3", "R4": "RF"}
-REACH = 0.93
-CURL = 0.58  # a lifted finger curls toward the viewer to this share of its length
-
-# Back of each hand (in the hand's frame): knuckles on the right, wrist off
-# to the left. The left thumb's root sits under the palm; the thumb itself is
-# behind the instrument, on the thumb hole and register key.
-HANDS = {
-    "L": {"wrist": (162, 456), "wrist_half": 112, "fingers": ["L1", "L2", "L3", "L4"],
-          "thumb_base": (392, 404), "pivot": (292, 456)},
-    "R": {"wrist": (162, 860), "wrist_half": 112, "fingers": ["R1", "R2", "R3", "R4"],
-          "thumb_base": (392, 808), "pivot": (292, 860)},
-}
-
-THUMB_W = 50
-THUMB_BEHIND_ALPHA = 0.38   # how much of the thumb shows through the tube
-
-SHADOW_OFFSET = (16, 20)
