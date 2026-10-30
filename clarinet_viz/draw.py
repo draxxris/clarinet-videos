@@ -173,17 +173,43 @@ def capsule_stroke(ctx: cairo.Context, pts, width, fill, ink_w: float = 5.0, alp
     ctx.restore()
 
 
-def key_shape(ctx: cairo.Context, x, y, shape: str, a, b, grow: float = 0.0) -> None:
-    """Path for a fingering-chart key: a circle of radius a, or an oval a wide
-    and b tall, grown outward by grow."""
+def key_shape(ctx: cairo.Context, x, y, shape: str, a, b, rot: float = 0.0,
+              grow: float = 0.0) -> None:
+    """Path for a fingering-chart key, grown outward by grow.
+
+    circle: radius a. oval: a wide, b tall. drop: a teardrop, point up.
+    blade / blade_r: a tall key with a stem at the bottom, straight edge on
+    the right / left."""
     ctx.new_sub_path()
-    if shape == "circle":
-        ctx.arc(x, y, a + grow, 0, 2 * math.pi)
-        return
     ctx.save()
     ctx.translate(x, y)
-    ctx.scale(a / 2 + grow, b / 2 + grow)
-    ctx.arc(0, 0, 1, 0, 2 * math.pi)
+    ctx.rotate(math.radians(rot))
+    if shape == "circle":
+        ctx.arc(0, 0, a + grow, 0, 2 * math.pi)
+        ctx.restore()
+        return
+    ctx.scale((a + 2 * grow) / a, (b + 2 * grow) / b)
+    if shape == "oval":
+        ctx.scale(a / 2, b / 2)
+        ctx.arc(0, 0, 1, 0, 2 * math.pi)
+    elif shape == "drop":
+        cy = b / 2 - a / 2
+        ctx.move_to(0, -b / 2)
+        ctx.curve_to(a * 0.12, -b * 0.25, a / 2, cy - b * 0.2, a / 2, cy)
+        ctx.arc(0, cy, a / 2, 0, math.pi)
+        ctx.curve_to(-a / 2, cy - b * 0.2, -a * 0.12, -b * 0.25, 0, -b / 2)
+        ctx.close_path()
+    else:  # blade, blade_r
+        if shape == "blade_r":
+            ctx.scale(-1, 1)
+        ctx.move_to(a / 2, -b / 2 + a * 0.35)
+        ctx.line_to(a / 2, b / 2)
+        ctx.line_to(a / 2 - a * 0.43, b / 2)
+        ctx.line_to(a / 2 - a * 0.43, b / 2 - b * 0.2)
+        ctx.curve_to(-a / 2 - a * 0.05, b * 0.12, -a / 2 - a * 0.05, -b * 0.25,
+                     -a * 0.05, -b / 2 + a * 0.05)
+        ctx.curve_to(a * 0.2, -b / 2 - a * 0.05, a / 2, -b / 2 + a * 0.1, a / 2, -b / 2 + a * 0.35)
+        ctx.close_path()
     ctx.restore()
 
 

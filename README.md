@@ -10,20 +10,22 @@ python -m clarinet_viz examples/ode_to_joy.musicxml -o ode_to_joy.mp4
 
 ## What's on screen
 
-- **Fingering chart** (left): the clarinet drawn the way a printed fingering
-  chart shows it, as just its keys and tone holes: circles for the holes,
-  ovals for the register key, A and G# keys, side keys and pinky keys, with
-  a line between the hands. Keys for the *next* note get a pulsing ring in
-  their finger colour as it approaches, and keys in use fill with that colour
-  while they're held.
+- **Fingering chart** (left): the clarinet as a standard teacher's fingering
+  chart, copied from a reference: a teardrop register key, the thumb hole,
+  three holes per hand with a line between the hands, the right-hand side
+  keys, and four staggered right-pinky keys. Open keys are outlines; keys in
+  use fill with their finger's colour, and the next note's keys get a pulsing
+  ring. The reference has no A, G# or left-pinky keys, but some notes need
+  them, so those are added in the same plain style (the left pinky's three
+  keys sit above the divider; A and G# beside the first hole).
 - **Note highway** (right): one horizontal lane per finger, lined up with the
   keys it plays and colour coded the same for both hands (thumb orange, index
   green, middle red, ring yellow, pinky blue). Notes scroll in from the right
   to the strike line beside the clarinet; a gem's length is how long to hold
-  it. Fingers that work more than one key (thumb, left index, both pinkies,
-  right index on the side keys) carry a mini fingering diagram on the front
-  of each gem with the key to press filled in, plus its name when there's
-  room (`T+Reg`, `A`, `G#`, `C#`, `Ab`, `Eb` ...).
+  it. Fingers that work keys beyond a plain hole (thumb, left index, both
+  pinkies, right index on the side key) carry a mini copy of that part of the
+  chart on the front of each gem with the key to press filled in, plus its
+  name when there's room (`T+Reg`, `A`, `G#`, `C#`, `Ab`, `Eb` ...).
 - **Staff** (top): the written part on the same timeline as the highway, so
   each note sits directly above its gems, with note-name tags underneath.
 - **Now playing** (top left): the written note, the concert pitch it sounds,

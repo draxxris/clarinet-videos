@@ -11,7 +11,7 @@ Key ids:
   LCS    left pinky C#/G#
   RE     right pinky E/B            RF    right pinky F/C
   RGS    right pinky G#/D# (Ab/Eb)
-  S1-S4  right hand side keys (S4 = side Eb/Bb), pressed by the right index
+  S4     side Eb/Bb key, pressed by the right index
 """
 
 from __future__ import annotations
@@ -46,9 +46,6 @@ KEYS = {k.id: k for k in [
     KeyDef("LE", "L4", "E/B", "key"),
     KeyDef("LFS", "L4", "F#/C#", "key"),
     KeyDef("LCS", "L4", "C#/G#", "key"),
-    KeyDef("S1", "R1", "S1", "key"),
-    KeyDef("S2", "R1", "S2", "key"),
-    KeyDef("S3", "R1", "S3", "key"),
     KeyDef("S4", "R1", "Eb/Bb", "key"),
     KeyDef("R1", "R1", "1", "hole"),
     KeyDef("R2", "R2", "2", "hole"),

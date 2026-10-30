@@ -18,8 +18,8 @@ from .score import Note, Score
 
 UPCOMING_WINDOW = 0.9  # seconds ahead that keys start glowing
 IMPACT_TIME = 0.2      # seconds the "press" burst lasts
-# Fingers with more than one key get a mini key diagram on their gems.
-ICON_FINGERS = {k.finger for k in KEYS.values() if k.id in L.ICON_SHAPE}
+# Fingers that work keys beyond a plain tone hole get a mini key diagram on their gems.
+ICON_FINGERS = {KEYS[k].finger for k, v in L.KEY_SHAPE.items() if v[2] != "circle"}
 
 
 @dataclass
@@ -480,33 +480,33 @@ class Scene:
 
     # fingering chart ---------------------------------------------------------
 
+    @staticmethod
+    def _chart_shapes():
+        """Every key on the chart in drawing order: (key id or None, finger,
+        x, y, shape, a, b, rot). The right pinky's keys overlap, so they go last,
+        back to front."""
+        items = [(k, KEYS[k].finger, *v) for k, v in L.KEY_SHAPE.items()]
+        items += [(None, f, *v) for f, *v in L.DECOR]
+        order = {"RE": 0, None: 1, "RGS": 2, "RF": 3}
+        pinky = sorted((i for i in items if i[1] == "R4"), key=lambda i: order[i[0]])
+        return [i for i in items if i[1] != "R4"] + pinky
+
     def _draw_chart_static(self, ctx) -> None:
         """White chart card with every key drawn open, as on a printed chart."""
         x, y, w, h = L.CHART_PANEL
         D.panel(ctx, x, y, w, h, shadow=7, line_w=4)
-        ctx.move_to(L.CHART_X - 40, L.DIVIDER_Y)
-        ctx.line_to(L.CHART_X + 40, L.DIVIDER_Y)
-        D.set_rgb(ctx, L.INK)
-        ctx.set_line_width(4)
+        cx = L.KEY_SHAPE["L1"][0]
+        ctx.move_to(cx - L.DIVIDER_HALF, L.DIVIDER_Y)
+        ctx.line_to(cx + L.DIVIDER_HALF, L.DIVIDER_Y)
+        D.set_rgb(ctx, L.INK, 0.7)
+        ctx.set_line_width(3)
         ctx.stroke()
-        title_font, text_font, _ = D.fonts()
-        D.text(ctx, "L", x + 18, L.LANE_Y["L2"] + 12, 34, color=D.lighten(L.INK, 0.55), font=title_font)
-        D.text(ctx, "R", x + 18, L.LANE_Y["R2"] + 12, 34, color=D.lighten(L.INK, 0.55), font=title_font)
-        for key, (kx, ky, shape, a, b) in L.KEY_SHAPE.items():
-            D.key_shape(ctx, kx, ky, shape, a, b)
-            D.fill_ink(ctx, L.WHITE, 3)
-            label = L.SHORT_LABELS.get(key)
-            if label is None:
-                continue
-            if key in ("LE", "LFS", "LCS"):
-                D.text(ctx, label, kx - a / 2 - 8, ky + 5, 14, color=D.lighten(L.INK, 0.3),
-                       font=text_font, align="right")
-            elif key == "T":
-                D.text(ctx, label, kx, ky + 6, 16, color=D.lighten(L.INK, 0.3), font=text_font,
-                       align="center")
-            else:
-                D.text(ctx, label, kx + a / 2 + 6, ky + 5, 14, color=D.lighten(L.INK, 0.3),
-                       font=text_font)
+        title_font = D.fonts()[0]
+        D.text(ctx, "L", x + 16, L.LANE_Y["L3"] + 12, 34, color=D.lighten(L.INK, 0.6), font=title_font)
+        D.text(ctx, "R", x + 16, L.LANE_Y["R2"] + 12, 34, color=D.lighten(L.INK, 0.6), font=title_font)
+        for _, _, kx, ky, shape, a, b, rot in self._chart_shapes():
+            D.key_shape(ctx, kx, ky, shape, a, b, rot)
+            D.fill_ink(ctx, L.WHITE, 2.4)
 
     def _draw_keys(self, ctx, t: float, cur: Event | None, nxt: Event | None) -> None:
         """Fill the keys in use with their finger colour; ring the next note's keys."""
@@ -519,36 +519,47 @@ class Scene:
                 upcoming = nxt.fingering - pressed
                 u_amt = 1 - lead / UPCOMING_WINDOW
         pulse = 0.5 + 0.5 * math.sin(t * 16)
-        for key, (x, y, shape, a, b) in L.KEY_SHAPE.items():
-            col = L.FINGER_COLORS[KEYS[key].finger]
+        for key, finger, x, y, shape, a, b, rot in self._chart_shapes():
+            if key is None:
+                continue
+            col = L.FINGER_COLORS[finger]
             if key in upcoming:
-                D.key_shape(ctx, x, y, shape, a, b, grow=5 + 3 * u_amt)
+                D.key_shape(ctx, x, y, shape, a, b, rot, grow=5 + 3 * u_amt)
                 D.set_rgb(ctx, col, 0.35 + 0.6 * u_amt * (0.6 + 0.4 * pulse))
                 ctx.set_line_width(4 + 2 * u_amt)
                 ctx.stroke()
             if key in pressed:
                 age = t - cur.start
-                pop = 3 * max(0.0, 1 - age / IMPACT_TIME)
-                D.key_shape(ctx, x, y, shape, a, b, grow=pop)
-                D.fill_ink(ctx, col, 3)
-                # A small highlight so filled keys read as solid.
-                D.key_shape(ctx, x - (a * 0.18 if shape == "circle" else a * 0.12),
-                            y - (a * 0.22 if shape == "circle" else b * 0.16),
-                            shape, a * 0.35, b * 0.3)
-                D.set_rgb(ctx, L.WHITE, 0.45)
-                ctx.fill()
+                D.key_shape(ctx, x, y, shape, a, b, rot, grow=3 * max(0.0, 1 - age / IMPACT_TIME))
+                D.fill_ink(ctx, col, 2.4)
+                if shape == "circle":
+                    # A small highlight so filled holes read as solid.
+                    D.key_shape(ctx, x - a * 0.2, y - a * 0.25, "circle", a * 0.28, 0)
+                    D.set_rgb(ctx, L.WHITE, 0.45)
+                    ctx.fill()
 
     def _draw_key_icon(self, ctx, finger: str, keys: list[str], cx, cy) -> None:
-        """Mini fingering diagram of one finger's keys, the pressed ones filled."""
-        s = L.ICON_SIZE + 8
-        D.rounded_rect(ctx, cx - s / 2, cy - s / 2, s, s, 10)
+        """Mini copy of the chart region for one finger: the same shapes in the
+        same arrangement, the ones to press filled in."""
+        items = [i for i in self._chart_shapes() if i[1] == finger]
+        # Fit the finger's keys into the icon box.
+        x0 = y0 = math.inf
+        x1 = y1 = -math.inf
+        for _, _, x, y, shape, a, b, rot in items:
+            w, h = (2 * a, 2 * a) if shape == "circle" else (a, b)
+            r = math.radians(rot)
+            hw = math.hypot(w / 2 * math.cos(r), h / 2 * math.sin(r))
+            hh = math.hypot(w / 2 * math.sin(r), h / 2 * math.cos(r))
+            x0, x1 = min(x0, x - hw), max(x1, x + hw)
+            y0, y1 = min(y0, y - hh), max(y1, y + hh)
+        k = L.ICON_SIZE / max(x1 - x0, y1 - y0)
+        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+        side = L.ICON_SIZE + 12
+        D.rounded_rect(ctx, cx - side / 2, cy - side / 2, side, side, 10)
         D.fill_ink(ctx, L.WHITE, 3)
         col = L.FINGER_COLORS[finger]
-        for key, kd in KEYS.items():
-            if kd.finger != finger or key not in L.ICON_SHAPE:
-                continue
-            x, y, shape, a, b = L.ICON_SHAPE[key]
-            D.key_shape(ctx, cx + x, cy + y, shape, a, b)
+        for key, _, x, y, shape, a, b, rot in items:
+            D.key_shape(ctx, cx + (x - mx) * k, cy + (y - my) * k, shape, a * k, b * k, rot)
             D.fill_ink(ctx, col if key in keys else L.WHITE, 2)
 
     # panel -------------------------------------------------------------------

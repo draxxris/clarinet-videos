@@ -45,68 +45,78 @@ FINGER_LABELS = {
 
 # --- fingering chart ------------------------------------------------------
 
-CHART_X = 560                          # the column of tone holes
+# The chart copies a standard teacher's clarinet fingering chart. Positions
+# below are in that chart's own units (REF_*), scaled onto the canvas, so
+# the shapes keep the original's proportions: a teardrop register key, the
+# thumb hole, three holes per hand, the right-hand side keys, and four
+# staggered right-pinky keys.
 CHART_PANEL = (392, 178, 304, 890)     # x, y, w, h of the white chart card
-DIVIDER_Y = 562                        # line between the left and right hands
-HOLE_R = 30
+REF_SCALE = 1.7
+REF_COL = 82                           # x of the column of finger holes
+_CX, _Y0 = 524, 202                    # where the column / the top land on the canvas
 
-# Each key as (x, y, shape, a, b): a circle of radius a, or an oval a wide
-# and b tall. The arrangement follows a printed clarinet fingering chart.
+
+def _x(x):
+    return round(_CX + (x - REF_COL) * REF_SCALE)
+
+
+def _y(y):
+    return round(_Y0 + (y - 12) * REF_SCALE)
+
+
+def _k(x, y, shape, a, b=0, rot=0.0):
+    """A key: centre, shape ('circle' radius a; 'oval', 'drop', 'blade' and
+    'blade_r' a wide and b tall) and tilt in degrees, all in chart units."""
+    return (_x(x), _y(y), shape, round(a * REF_SCALE, 1), round(b * REF_SCALE, 1), rot)
+
+
+_GAP = 60   # extra room between the left hand's holes and the divider for the left pinky keys
+
+# Keys the fingering table presses.
 KEY_SHAPE = {
-    "REG": (468, 214, "oval", 22, 66),
-    "T": (482, 288, "circle", 24, 0),
-    "A": (562, 254, "oval", 50, 20),
-    "GS": (620, 268, "oval", 20, 44),
-    "L1": (CHART_X, 336, "circle", HOLE_R, 0),
-    "L2": (CHART_X, 420, "circle", HOLE_R, 0),
-    "L3": (CHART_X, 504, "circle", HOLE_R, 0),
-    "LE": (462, 598, "oval", 62, 24),
-    "LFS": (474, 626, "oval", 62, 24),
-    "LCS": (462, 654, "oval", 62, 24),
-    "S1": (624, 606, "oval", 16, 28),
-    "S2": (624, 638, "oval", 16, 28),
-    "S3": (624, 670, "oval", 16, 28),
-    "S4": (656, 712, "oval", 22, 46),
-    "R1": (CHART_X, 738, "circle", HOLE_R, 0),
-    "R2": (CHART_X, 822, "circle", HOLE_R, 0),
-    "R3": (CHART_X, 906, "circle", HOLE_R, 0),
-    "RE": (536, 982, "oval", 66, 26),
-    "RF": (556, 1010, "oval", 66, 26),
-    "RGS": (536, 1038, "oval", 66, 26),
+    "REG": _k(36, 54, "drop", 19, 84),
+    "T": _k(36, 122, "circle", 18.5),
+    "L1": _k(82, 96, "circle", 18.5),
+    "L2": _k(82, 148, "circle", 18.5),
+    "L3": _k(82, 199, "circle", 18.5),
+    # Not on the reference (it shows no A, G# or left pinky keys), but some
+    # fingerings need them: drawn in the same plain style.
+    "A": _k(124, 66, "oval", 34, 15),
+    "GS": _k(136, 108, "oval", 15, 36),
+    "LE": _k(50, 240, "oval", 44, 15, 8),
+    "LFS": _k(56, 257, "oval", 44, 15, 8),
+    "LCS": _k(50, 274, "oval", 44, 15, 8),
+    "R1": _k(82, 274 + _GAP, "circle", 18.5),
+    "R2": _k(82, 325 + _GAP, "circle", 18.5),
+    "R3": _k(82, 376 + _GAP, "circle", 18.5),
+    "S4": _k(120, 343.5, "blade", 18, 65),
+    "RE": _k(52.5, 410 + _GAP, "oval", 45, 21, 11),
+    "RGS": _k(51, 435 + _GAP, "oval", 45, 22, 11),
+    "RF": _k(79, 435 + _GAP, "oval", 49, 24, 12),
 }
+
+# Keys the reference shows that no fingering here uses: (finger, shape...).
+DECOR = [
+    ("R1", *_k(140.5, 348.5, "blade_r", 19, 53)),
+    ("R1", *_k(145.5, 310.5, "oval", 31, 17, -8)),
+    ("R4", *_k(78, 410 + _GAP, "oval", 49, 24, 12)),
+]
+
+DIVIDER_Y = _y(236 + _GAP)             # line between the left and right hands
+DIVIDER_HALF = round(17 * REF_SCALE)
 
 SHORT_LABELS = {
     "REG": "Reg", "T": "T", "A": "A", "GS": "G#", "LE": "E", "LFS": "F#", "LCS": "C#",
-    "S1": "1", "S2": "2", "S3": "3", "S4": "Eb", "RE": "E", "RF": "F", "RGS": "Ab",
+    "S4": "Eb", "RE": "E", "RF": "F", "RGS": "Ab",
 }
 
-# Mini diagrams on the highway gems: each finger's keys in a compact version
-# of the chart's arrangement, in a box ICON_SIZE across (same shape tuples,
-# relative to the box centre).
-ICON_SIZE = 54
-ICON_SHAPE = {
-    "REG": (-11, -7, "oval", 10, 30),
-    "T": (8, 11, "circle", 10, 0),
-    "A": (-3, -16, "oval", 24, 10),
-    "GS": (17, -10, "oval", 9, 20),
-    "L1": (-3, 9, "circle", 13, 0),
-    "LE": (-3, -13, "oval", 32, 12),
-    "LFS": (4, 0, "oval", 32, 12),
-    "LCS": (-3, 13, "oval", 32, 12),
-    "S1": (6, -19, "oval", 8, 12),
-    "S2": (6, -6, "oval", 8, 12),
-    "S3": (6, 7, "oval", 8, 12),
-    "S4": (18, 15, "oval", 10, 20),
-    "R1": (-12, 11, "circle", 11, 0),
-    "RE": (-3, -13, "oval", 34, 12),
-    "RF": (4, 0, "oval", 34, 12),
-    "RGS": (-3, 13, "oval", 34, 12),
-}
+ICON_SIZE = 54   # mini key diagram on a highway gem fits this box
 
 # --- highway -------------------------------------------------------------
 
-LANE_Y = {"LT": 250, "L1": 336, "L2": 420, "L3": 504, "L4": 624,
-          "R1": 738, "R2": 822, "R3": 906, "R4": 1010}
+LANE_Y = {"LT": 270, "L1": KEY_SHAPE["L1"][1], "L2": KEY_SHAPE["L2"][1], "L3": KEY_SHAPE["L3"][1],
+          "L4": KEY_SHAPE["LFS"][1], "R1": KEY_SHAPE["R1"][1], "R2": KEY_SHAPE["R2"][1],
+          "R3": KEY_SHAPE["R3"][1], "R4": KEY_SHAPE["RF"][1]}
 LANE_H = 62
 STRIKE_X = 762
 HIGHWAY_RECT = (718, 196, 1186, 872)   # x, y, w, h

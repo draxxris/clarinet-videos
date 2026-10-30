@@ -34,10 +34,11 @@ def test_midi_written_at_concert_pitch(tmp_path):
 
 def test_chart_has_every_key_and_icons_cover_multi_key_fingers():
     from clarinet_viz import layout as L
-    from clarinet_viz.fingerings import KEYS
+    from clarinet_viz.fingerings import FINGERINGS, KEYS
     from clarinet_viz.scene import ICON_FINGERS
 
     assert set(L.KEY_SHAPE) == set(KEYS)
+    # Every key some fingering presses has a place on the chart (RE is the
+    # chart's spare right-pinky key, kept for completeness).
+    assert set().union(*FINGERINGS.values()) <= set(L.KEY_SHAPE)
     assert ICON_FINGERS == {"LT", "L1", "L4", "R1", "R4"}
-    for f in ICON_FINGERS:
-        assert {k for k, d in KEYS.items() if d.finger == f} <= set(L.ICON_SHAPE)
