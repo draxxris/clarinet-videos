@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clarinet-viz"
+version = "0.1.0"
+description = "Turn Bb clarinet MusicXML into a comic-style play-along video with fingerings"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["pycairo>=1.20", "numpy>=1.22"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+clarinet-viz = "clarinet_viz.cli:main"
+
+[tool.setuptools]
+packages = ["clarinet_viz"]
