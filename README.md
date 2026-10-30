@@ -10,16 +10,20 @@ python -m clarinet_viz examples/ode_to_joy.musicxml -o ode_to_joy.mp4
 
 ## What's on screen
 
-- **Clarinet** (left): a large upright view of the keywork, cropped to the
-  upper and lower joints so the keys are easy to see. The register key, thumb
-  hole and thumb rest are on the back, so they're drawn dashed. Keys for the
-  *next* note pulse in their finger colour as it approaches, and keys in use
-  glow while they're held.
+- **Fingering chart** (left): the clarinet drawn the way a printed fingering
+  chart shows it, as just its keys and tone holes: circles for the holes,
+  ovals for the register key, A and G# keys, side keys and pinky keys, with
+  a line between the hands. Keys for the *next* note get a pulsing ring in
+  their finger colour as it approaches, and keys in use fill with that colour
+  while they're held.
 - **Note highway** (right): one horizontal lane per finger, lined up with the
   keys it plays and colour coded the same for both hands (thumb orange, index
   green, middle red, ring yellow, pinky blue). Notes scroll in from the right
   to the strike line beside the clarinet; a gem's length is how long to hold
-  it. Lever gems are labelled (`A`, `G#`, `T+Reg`, `E`, `F`, `Ab`, `Eb` ...).
+  it. Fingers that work more than one key (thumb, left index, both pinkies,
+  right index on the side keys) carry a mini fingering diagram on the front
+  of each gem with the key to press filled in, plus its name when there's
+  room (`T+Reg`, `A`, `G#`, `C#`, `Ab`, `Eb` ...).
 - **Staff** (top): the written part on the same timeline as the highway, so
   each note sits directly above its gems, with note-name tags underneath.
 - **Now playing** (top left): the written note, the concert pitch it sounds,

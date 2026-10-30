@@ -1,10 +1,10 @@
 """Scene geometry and colours. Everything is laid out on a 1920x1080 canvas
 and scaled to the output size.
 
-The clarinet stands upright on the left, cropped to the keywork (no
-mouthpiece or bell). Each finger has a horizontal lane at the height of the
-keys it plays; notes scroll in from the right toward a strike line beside
-the instrument. The staff along the top shares the highway's timeline, so a
+The clarinet is shown on the left as a fingering chart: tone holes as
+circles and keys as ovals, laid out like a printed chart, top to bottom.
+Each finger has a horizontal lane at the height of the keys it plays; notes
+scroll in from the right toward a strike line beside the chart. The staff along the top shares the highway's timeline, so a
 note on the staff sits directly above its gems.
 """
 
@@ -25,15 +25,6 @@ WHITE = (1.0, 1.0, 1.0)
 BG_TOP = hex_rgb("#141226")
 BG_BOTTOM = hex_rgb("#08070e")
 
-WOOD_EDGE = hex_rgb("#060608")
-WOOD = hex_rgb("#1d1d24")
-WOOD_MID = hex_rgb("#34364a")
-WOOD_SHINE = hex_rgb("#7c829e")
-SILVER_LIGHT = hex_rgb("#ffffff")
-SILVER = hex_rgb("#cfd4dd")
-SILVER_SHADE = hex_rgb("#8d94a3")
-SILVER_DARK = hex_rgb("#5a606e")
-
 HIGHWAY = hex_rgb("#191630")
 HIGHWAY_LANE = hex_rgb("#231f42")
 ACCENT = hex_rgb("#ff2e88")
@@ -52,40 +43,36 @@ FINGER_LABELS = {
     "R1": "R index", "R2": "R middle", "R3": "R ring", "R4": "R pinky",
 }
 
-# --- clarinet ----------------------------------------------------------------
+# --- fingering chart ------------------------------------------------------
 
-BODY_X = 560          # centre line of the instrument
-BODY_R = 58           # half width of the tube
-BODY_LEFT = BODY_X - BODY_R
-BODY_RIGHT = BODY_X + BODY_R
-BODY_TOP = 150        # cropped above the register key
-TENON_Y = 562         # joint between upper and lower joints
-THUMB_REST_Y = 778
+CHART_X = 560                          # the column of tone holes
+CHART_PANEL = (392, 178, 304, 890)     # x, y, w, h of the white chart card
+DIVIDER_Y = 562                        # line between the left and right hands
+HOLE_R = 30
 
-HOLE_R = 22
-
-# Key/hole positions: (x, y, kind) where kind controls how it is drawn.
-KEY_POS = {
-    "REG": (BODY_X, 216, "back_key"),
-    "T": (BODY_X, 262, "back_hole"),
-    "A": (BODY_X - 4, 292, "front_lever"),
-    "GS": (BODY_RIGHT + 4, 304, "side_lever"),
-    "L1": (BODY_X, 336, "hole"),
-    "L2": (BODY_X, 420, "hole"),
-    "L3": (BODY_X, 504, "hole"),
-    "LE": (BODY_LEFT - 16, 594, "spatula"),
-    "LFS": (BODY_LEFT - 24, 624, "spatula"),
-    "LCS": (BODY_LEFT - 16, 654, "spatula"),
-    "S1": (BODY_RIGHT + 2, 610, "side"),
-    "S2": (BODY_RIGHT + 2, 634, "side"),
-    "S3": (BODY_RIGHT + 2, 658, "side"),
-    "S4": (BODY_RIGHT + 2, 684, "side"),
-    "R1": (BODY_X, 738, "hole"),
-    "R2": (BODY_X, 822, "hole"),
-    "R3": (BODY_X, 906, "hole"),
-    "RE": (BODY_RIGHT + 16, 980, "spatula"),
-    "RF": (BODY_RIGHT + 24, 1010, "spatula"),
-    "RGS": (BODY_RIGHT + 16, 1040, "spatula"),
+# Each key as (x, y, shape, a, b): a circle of radius a, or an oval a wide
+# and b tall. The arrangement follows a printed clarinet fingering chart.
+KEY_SHAPE = {
+    "REG": (468, 214, "oval", 22, 66),
+    "T": (482, 288, "circle", 24, 0),
+    "A": (562, 254, "oval", 50, 20),
+    "GS": (620, 268, "oval", 20, 44),
+    "L1": (CHART_X, 336, "circle", HOLE_R, 0),
+    "L2": (CHART_X, 420, "circle", HOLE_R, 0),
+    "L3": (CHART_X, 504, "circle", HOLE_R, 0),
+    "LE": (462, 598, "oval", 62, 24),
+    "LFS": (474, 626, "oval", 62, 24),
+    "LCS": (462, 654, "oval", 62, 24),
+    "S1": (624, 606, "oval", 16, 28),
+    "S2": (624, 638, "oval", 16, 28),
+    "S3": (624, 670, "oval", 16, 28),
+    "S4": (656, 712, "oval", 22, 46),
+    "R1": (CHART_X, 738, "circle", HOLE_R, 0),
+    "R2": (CHART_X, 822, "circle", HOLE_R, 0),
+    "R3": (CHART_X, 906, "circle", HOLE_R, 0),
+    "RE": (536, 982, "oval", 66, 26),
+    "RF": (556, 1010, "oval", 66, 26),
+    "RGS": (536, 1038, "oval", 66, 26),
 }
 
 SHORT_LABELS = {
@@ -93,9 +80,32 @@ SHORT_LABELS = {
     "S1": "1", "S2": "2", "S3": "3", "S4": "Eb", "RE": "E", "RF": "F", "RGS": "Ab",
 }
 
+# Mini diagrams on the highway gems: each finger's keys in a compact version
+# of the chart's arrangement, in a box ICON_SIZE across (same shape tuples,
+# relative to the box centre).
+ICON_SIZE = 54
+ICON_SHAPE = {
+    "REG": (-11, -7, "oval", 10, 30),
+    "T": (8, 11, "circle", 10, 0),
+    "A": (-3, -16, "oval", 24, 10),
+    "GS": (17, -10, "oval", 9, 20),
+    "L1": (-3, 9, "circle", 13, 0),
+    "LE": (-3, -13, "oval", 32, 12),
+    "LFS": (4, 0, "oval", 32, 12),
+    "LCS": (-3, 13, "oval", 32, 12),
+    "S1": (6, -19, "oval", 8, 12),
+    "S2": (6, -6, "oval", 8, 12),
+    "S3": (6, 7, "oval", 8, 12),
+    "S4": (18, 15, "oval", 10, 20),
+    "R1": (-12, 11, "circle", 11, 0),
+    "RE": (-3, -13, "oval", 34, 12),
+    "RF": (4, 0, "oval", 34, 12),
+    "RGS": (-3, 13, "oval", 34, 12),
+}
+
 # --- highway -------------------------------------------------------------
 
-LANE_Y = {"LT": 240, "L1": 336, "L2": 420, "L3": 504, "L4": 624,
+LANE_Y = {"LT": 250, "L1": 336, "L2": 420, "L3": 504, "L4": 624,
           "R1": 738, "R2": 822, "R3": 906, "R4": 1010}
 LANE_H = 62
 STRIKE_X = 762

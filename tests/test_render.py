@@ -30,3 +30,14 @@ def test_midi_written_at_concert_pitch(tmp_path):
     # First note-on is concert D4 (62).
     i = data.index(bytes([0x90]))
     assert data[i + 1] == 62
+
+
+def test_chart_has_every_key_and_icons_cover_multi_key_fingers():
+    from clarinet_viz import layout as L
+    from clarinet_viz.fingerings import KEYS
+    from clarinet_viz.scene import ICON_FINGERS
+
+    assert set(L.KEY_SHAPE) == set(KEYS)
+    assert ICON_FINGERS == {"LT", "L1", "L4", "R1", "R4"}
+    for f in ICON_FINGERS:
+        assert {k for k, d in KEYS.items() if d.finger == f} <= set(L.ICON_SHAPE)

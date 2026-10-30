@@ -18,6 +18,8 @@ from .score import Note, Score
 
 UPCOMING_WINDOW = 0.9  # seconds ahead that keys start glowing
 IMPACT_TIME = 0.2      # seconds the "press" burst lasts
+# Fingers with more than one key get a mini key diagram on their gems.
+ICON_FINGERS = {k.finger for k in KEYS.values() if k.id in L.ICON_SHAPE}
 
 
 @dataclass
@@ -59,7 +61,7 @@ class Scene:
             self.events.append(Event(n.start + lead_in, n.end + lead_in, n, fing, by_finger))
         self._starts = [e.start for e in self.events]
         self._bg: cairo.ImageSurface | None = None
-        self._body: cairo.ImageSurface | None = None
+        self._chart: cairo.ImageSurface | None = None
 
     # ------------------------------------------------------------------ timing
 
@@ -92,7 +94,7 @@ class Scene:
     def render(self, ctx: cairo.Context, t: float) -> None:
         if self._bg is None:
             self._bg = self._render_background()
-            self._body = self._render_body()
+            self._chart = self._render_chart()
             self._overlay = self._render_overlay()
             self._highway = cairo.ImageSurface(cairo.FORMAT_ARGB32, L.W, L.H)
             self._draw_highway_static(cairo.Context(self._highway))
@@ -101,7 +103,7 @@ class Scene:
         cur, nxt_i = self.current(t)
         nxt = self.events[nxt_i] if nxt_i < len(self.events) else None
 
-        ctx.set_source_surface(self._body, 0, 0)
+        ctx.set_source_surface(self._chart, 0, 0)
         ctx.paint()
         self._draw_keys(ctx, t, cur, nxt)
         ctx.set_source_surface(self._highway, 0, 0)
@@ -120,12 +122,6 @@ class Scene:
         g = cairo.LinearGradient(0, 0, 0, L.H)
         g.add_color_stop_rgb(0, *L.BG_TOP)
         g.add_color_stop_rgb(1, *L.BG_BOTTOM)
-        ctx.set_source(g)
-        ctx.paint()
-        # Faint glow behind the instrument so the black wood reads.
-        g = cairo.RadialGradient(L.BODY_X, 600, 30, L.BODY_X, 600, 560)
-        g.add_color_stop_rgba(0, 0.55, 0.6, 0.85, 0.22)
-        g.add_color_stop_rgba(1, 0.55, 0.6, 0.85, 0)
         ctx.set_source(g)
         ctx.paint()
         # Scattered stars.
@@ -147,10 +143,10 @@ class Scene:
         D.panel(ctx, *L.NOW_PANEL, shadow=7, line_w=4)
         return surf
 
-    def _render_body(self) -> cairo.ImageSurface:
+    def _render_chart(self) -> cairo.ImageSurface:
         surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, L.W, L.H)
         ctx = cairo.Context(surf)
-        self._draw_clarinet_body(ctx)
+        self._draw_chart_static(ctx)
         return surf
 
     # staff ------------------------------------------------------------------
@@ -323,10 +319,10 @@ class Scene:
     # highway -----------------------------------------------------------------
 
     def _draw_lane_guides(self, ctx) -> None:
-        """Dashed guides from each finger's keys toward its lane."""
+        """Dashed guides from the chart toward each finger's lane."""
         for f in FINGERS:
             ly = L.LANE_Y[f]
-            ctx.move_to(L.BODY_RIGHT + 14, ly)
+            ctx.move_to(L.CHART_PANEL[0] + L.CHART_PANEL[2], ly)
             ctx.line_to(L.STRIKE_X - 26, ly)
             ctx.set_dash([4, 6])
             D.set_rgb(ctx, D.darken(L.FINGER_COLORS[f], 0.2), 0.7)
@@ -452,11 +448,20 @@ class Scene:
             D.rounded_rect(ctx, xa + 8, ly - gh / 2 + 5, max(10, x1 - xa - 16), 7, 3.5)
             D.set_rgb(ctx, L.WHITE, 0.5)
             ctx.fill()
+            # The key diagram and label ride the front of the gem, then stick
+            # just past the strike line.
+            lx = max(x0 + 12, L.STRIKE_X + 32)
+            if f in ICON_FINGERS:
+                half = L.ICON_SIZE / 2 + 4
+                bx = max(x0 + half, L.STRIKE_X + 30 + half)
+                if bx + half < x1 + 6:
+                    self._draw_key_icon(ctx, f, keys, bx, ly)
+                    lx = bx + half + 10
             label = self._gem_label(f, keys)
             if label:
-                # The label rides the front of the gem, then sticks just past the strike line.
-                lx = max(x0 + 12, L.STRIKE_X + 32)
-                if lx < x1 - 20:
+                ctx.select_font_face(title_font, cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+                ctx.set_font_size(22)
+                if lx + ctx.text_extents(label).x_advance < x1 - 6:
                     D.text(ctx, label, lx, ly + 8, 22, color=L.WHITE, font=title_font, outline=4)
 
     def _impact(self, ctx, x, y, col, u: float) -> None:
@@ -473,204 +478,78 @@ class Scene:
         ctx.stroke()
         ctx.restore()
 
-    # clarinet ----------------------------------------------------------------
+    # fingering chart ---------------------------------------------------------
 
-    def _draw_clarinet_body(self, ctx) -> None:
-        top, bottom = -20, L.H + 20
-        xl, xr = L.BODY_LEFT, L.BODY_RIGHT
-        # Cast shadow of the instrument on the backdrop.
-        for i in range(10):
-            D.rounded_rect(ctx, xl + 14 - i * 2, top, (xr - xl) + i * 4, bottom - top, 30)
-            D.set_rgb(ctx, (0.2, 0.15, 0.1), 0.025)
-            ctx.fill()
-        # Wooden tube, shaded as a cylinder lit from the upper left.
-        ctx.rectangle(xl, top, xr - xl, bottom - top)
-        g = cairo.LinearGradient(xl, 0, xr, 0)
-        for stop, col in ((0, L.WOOD_EDGE), (0.12, L.WOOD), (0.24, L.WOOD_MID), (0.3, L.WOOD_SHINE),
-                          (0.36, L.WOOD_MID), (0.55, L.WOOD), (0.88, D.darken(L.WOOD, 0.5)),
-                          (1, L.WOOD_EDGE)):
-            g.add_color_stop_rgb(stop, *col)
-        ctx.set_source(g)
-        ctx.fill()
-        # Grenadilla grain.
-        rng = np.random.default_rng(7)
-        for _ in range(70):
-            gx = rng.uniform(xl + 6, xr - 6)
-            gy = rng.uniform(top, bottom)
-            ln = rng.uniform(40, 220)
-            ctx.move_to(gx, gy)
-            ctx.curve_to(gx + rng.uniform(-2, 2), gy + ln / 3, gx + rng.uniform(-2, 2), gy + 2 * ln / 3,
-                         gx + rng.uniform(-1.5, 1.5), gy + ln)
-            D.set_rgb(ctx, L.WHITE, rng.uniform(0.02, 0.06))
-            ctx.set_line_width(rng.uniform(0.8, 1.8))
-            ctx.stroke()
-        # Metal tenon rings: top of the upper joint and the middle joint.
-        for ry, rh in ((150, 20), (L.TENON_Y - 14, 12), (L.TENON_Y + 4, 12)):
-            self._ring(ctx, ry, rh)
-        # Key rods along the right side, with posts.
-        for y0, y1 in ((230, 530), (596, 950)):
-            self._metal_bar(ctx, xr - 10, y0, 7, y1 - y0, vertical=True)
-            for py in (y0, y1):
-                ctx.arc(xr - 6.5, py, 7, 0, 2 * math.pi)
-                self._metal_fill(ctx, xr - 13, xr)
-        # Ring-key linkages from each hole to the rod.
-        for k in ("L1", "L2", "L3", "R1", "R2", "R3"):
-            hx, hy, _ = L.KEY_POS[k]
-            self._metal_bar(ctx, hx + L.HOLE_R + 4, hy - 3, xr - 10 - (hx + L.HOLE_R + 4), 6)
-        # Thumb rest on the back (dashed: it's behind).
-        ctx.save()
-        ctx.set_dash([6, 5])
-        D.rounded_rect(ctx, L.BODY_X - 30, L.THUMB_REST_Y - 16, 60, 32, 9)
-        D.set_rgb(ctx, L.SILVER, 0.35)
-        ctx.fill_preserve()
-        D.set_rgb(ctx, L.SILVER, 0.8)
-        ctx.set_line_width(2.5)
-        ctx.stroke()
-        ctx.restore()
-        # Outline.
-        ctx.move_to(xl, top)
-        ctx.line_to(xl, bottom)
-        ctx.move_to(xr, top)
-        ctx.line_to(xr, bottom)
+    def _draw_chart_static(self, ctx) -> None:
+        """White chart card with every key drawn open, as on a printed chart."""
+        x, y, w, h = L.CHART_PANEL
+        D.panel(ctx, x, y, w, h, shadow=7, line_w=4)
+        ctx.move_to(L.CHART_X - 40, L.DIVIDER_Y)
+        ctx.line_to(L.CHART_X + 40, L.DIVIDER_Y)
         D.set_rgb(ctx, L.INK)
-        ctx.set_line_width(3)
+        ctx.set_line_width(4)
         ctx.stroke()
-
-    def _metal_fill(self, ctx, x0, x1) -> None:
-        g = cairo.LinearGradient(x0, 0, x1, 0)
-        g.add_color_stop_rgb(0, *L.SILVER_SHADE)
-        g.add_color_stop_rgb(0.35, *L.SILVER_LIGHT)
-        g.add_color_stop_rgb(0.7, *L.SILVER)
-        g.add_color_stop_rgb(1, *L.SILVER_DARK)
-        ctx.set_source(g)
-        ctx.fill_preserve()
-        D.set_rgb(ctx, L.INK, 0.85)
-        ctx.set_line_width(1.6)
-        ctx.stroke()
-
-    def _metal_bar(self, ctx, x, y, w, h, vertical=False) -> None:
-        D.rounded_rect(ctx, x, y, w, h, min(w, h) / 2)
-        if vertical:
-            self._metal_fill(ctx, x, x + w)
-        else:
-            g = cairo.LinearGradient(0, y, 0, y + h)
-            g.add_color_stop_rgb(0, *L.SILVER_LIGHT)
-            g.add_color_stop_rgb(1, *L.SILVER_SHADE)
-            ctx.set_source(g)
-            ctx.fill_preserve()
-            D.set_rgb(ctx, L.INK, 0.85)
-            ctx.set_line_width(1.4)
-            ctx.stroke()
-
-    def _ring(self, ctx, y, h) -> None:
-        ctx.rectangle(L.BODY_LEFT - 3, y, L.BODY_RIGHT - L.BODY_LEFT + 6, h)
-        self._metal_fill(ctx, L.BODY_LEFT - 3, L.BODY_RIGHT + 3)
-
-    def _key_outline(self, ctx, key: str, grow: float = 0.0) -> None:
-        x, y, kind = L.KEY_POS[key]
-        g = grow
-        if kind == "hole":
-            ctx.arc(x, y, L.HOLE_R + 7 + g, 0, 2 * math.pi)
-        elif kind == "back_hole":
-            ctx.arc(x, y, L.HOLE_R + g, 0, 2 * math.pi)
-        elif kind == "back_key":
-            D.rounded_rect(ctx, x - 26 - g, y - 12 - g, 52 + 2 * g, 24 + 2 * g, 11 + g)
-        elif kind == "front_lever":
-            D.rounded_rect(ctx, x - 30 - g, y - 11 - g, 60 + 2 * g, 22 + 2 * g, 10 + g)
-        elif kind == "side_lever":
-            D.rounded_rect(ctx, x - 9 - g, y - 24 - g, 22 + 2 * g, 48 + 2 * g, 9 + g)
-        elif kind == "side":
-            D.rounded_rect(ctx, x - 7 - g, y - 10 - g, 18 + 2 * g, 20 + 2 * g, 6 + g)
-        elif kind == "spatula":
-            D.rounded_rect(ctx, x - 26 - g, y - 12 - g, 50 + 2 * g, 24 + 2 * g, 10 + g)
+        title_font, text_font, _ = D.fonts()
+        D.text(ctx, "L", x + 18, L.LANE_Y["L2"] + 12, 34, color=D.lighten(L.INK, 0.55), font=title_font)
+        D.text(ctx, "R", x + 18, L.LANE_Y["R2"] + 12, 34, color=D.lighten(L.INK, 0.55), font=title_font)
+        for key, (kx, ky, shape, a, b) in L.KEY_SHAPE.items():
+            D.key_shape(ctx, kx, ky, shape, a, b)
+            D.fill_ink(ctx, L.WHITE, 3)
+            label = L.SHORT_LABELS.get(key)
+            if label is None:
+                continue
+            if key in ("LE", "LFS", "LCS"):
+                D.text(ctx, label, kx - a / 2 - 8, ky + 5, 14, color=D.lighten(L.INK, 0.3),
+                       font=text_font, align="right")
+            elif key == "T":
+                D.text(ctx, label, kx, ky + 6, 16, color=D.lighten(L.INK, 0.3), font=text_font,
+                       align="center")
+            else:
+                D.text(ctx, label, kx + a / 2 + 6, ky + 5, 14, color=D.lighten(L.INK, 0.3),
+                       font=text_font)
 
     def _draw_keys(self, ctx, t: float, cur: Event | None, nxt: Event | None) -> None:
+        """Fill the keys in use with their finger colour; ring the next note's keys."""
         pressed = (cur.fingering or frozenset()) if cur else frozenset()
         upcoming: frozenset[str] = frozenset()
         u_amt = 0.0
         if nxt is not None and nxt.fingering is not None:
             lead = nxt.start - t
             if lead <= UPCOMING_WINDOW:
-                upcoming = nxt.fingering
+                upcoming = nxt.fingering - pressed
                 u_amt = 1 - lead / UPCOMING_WINDOW
-        text_font = D.fonts()[1]
-        for key, (x, y, kind) in L.KEY_POS.items():
+        pulse = 0.5 + 0.5 * math.sin(t * 16)
+        for key, (x, y, shape, a, b) in L.KEY_SHAPE.items():
             col = L.FINGER_COLORS[KEYS[key].finger]
-            on = key in pressed
-            back = kind.startswith("back")
-            if on:
-                g = cairo.RadialGradient(x, y, 8, x, y, 64)
-                g.add_color_stop_rgba(0, *col, 0.85)
-                g.add_color_stop_rgba(1, *col, 0.0)
-                ctx.set_source(g)
-                ctx.arc(x, y, 64, 0, 2 * math.pi)
-                ctx.fill()
             if key in upcoming:
-                pulse = 0.5 + 0.5 * math.sin(t * 16)
-                self._key_outline(ctx, key, 7 + 5 * u_amt)
-                D.set_rgb(ctx, col, 0.3 + 0.6 * u_amt * (0.6 + 0.4 * pulse))
-                ctx.set_line_width(4 + 3 * u_amt)
+                D.key_shape(ctx, x, y, shape, a, b, grow=5 + 3 * u_amt)
+                D.set_rgb(ctx, col, 0.35 + 0.6 * u_amt * (0.6 + 0.4 * pulse))
+                ctx.set_line_width(4 + 2 * u_amt)
                 ctx.stroke()
-            if kind == "hole":
-                # Ring key around an open tone hole.
-                ctx.arc(x, y, L.HOLE_R + 7, 0, 2 * math.pi)
-                ctx.arc_negative(x, y, L.HOLE_R + 1, 2 * math.pi, 0)
-                if on:
-                    D.set_rgb(ctx, col)
-                    ctx.fill()
-                else:
-                    self._metal_fill(ctx, x - L.HOLE_R - 7, x + L.HOLE_R + 7)
-                    ctx.new_path()
-                ctx.arc(x, y, L.HOLE_R, 0, 2 * math.pi)
-                if on:
-                    # Covered: the hole is filled in with the finger's colour.
-                    g = cairo.RadialGradient(x - 6, y - 6, 2, x, y, L.HOLE_R)
-                    g.add_color_stop_rgb(0, *D.lighten(col, 0.6))
-                    g.add_color_stop_rgb(1, *col)
-                    ctx.set_source(g)
-                    ctx.fill_preserve()
-                    D.set_rgb(ctx, L.INK)
-                    ctx.set_line_width(2.5)
-                    ctx.stroke()
-                    continue
-                g = cairo.RadialGradient(x - 4, y - 4, 2, x, y, L.HOLE_R)
-                g.add_color_stop_rgb(0, 0.0, 0.0, 0.0)
-                g.add_color_stop_rgb(0.75, 0.05, 0.05, 0.07)
-                g.add_color_stop_rgb(1, 0.22, 0.22, 0.26)
-                ctx.set_source(g)
+            if key in pressed:
+                age = t - cur.start
+                pop = 3 * max(0.0, 1 - age / IMPACT_TIME)
+                D.key_shape(ctx, x, y, shape, a, b, grow=pop)
+                D.fill_ink(ctx, col, 3)
+                # A small highlight so filled keys read as solid.
+                D.key_shape(ctx, x - (a * 0.18 if shape == "circle" else a * 0.12),
+                            y - (a * 0.22 if shape == "circle" else b * 0.16),
+                            shape, a * 0.35, b * 0.3)
+                D.set_rgb(ctx, L.WHITE, 0.45)
                 ctx.fill()
+
+    def _draw_key_icon(self, ctx, finger: str, keys: list[str], cx, cy) -> None:
+        """Mini fingering diagram of one finger's keys, the pressed ones filled."""
+        s = L.ICON_SIZE + 8
+        D.rounded_rect(ctx, cx - s / 2, cy - s / 2, s, s, 10)
+        D.fill_ink(ctx, L.WHITE, 3)
+        col = L.FINGER_COLORS[finger]
+        for key, kd in KEYS.items():
+            if kd.finger != finger or key not in L.ICON_SHAPE:
                 continue
-            if kind == "spatula":
-                if x < L.BODY_X:
-                    self._metal_bar(ctx, x + 18, y - 3, L.BODY_LEFT - x - 14, 6)
-                else:
-                    self._metal_bar(ctx, L.BODY_RIGHT - 4, y - 3, x - 14 - L.BODY_RIGHT, 6)
-            ctx.save()
-            if back:
-                ctx.set_dash([5, 4])
-            self._key_outline(ctx, key)
-            if on:
-                D.set_rgb(ctx, col, 0.95)
-                ctx.fill_preserve()
-                D.set_rgb(ctx, L.INK)
-                ctx.set_line_width(2)
-                ctx.stroke()
-            elif back:
-                D.set_rgb(ctx, L.SILVER, 0.12)
-                ctx.fill_preserve()
-                D.set_rgb(ctx, L.SILVER, 0.75)
-                ctx.set_line_width(2.2)
-                ctx.stroke()
-            else:
-                ext = {"front_lever": 30, "side_lever": 11, "side": 9, "spatula": 26}[kind]
-                self._metal_fill(ctx, x - ext, x + ext)
-            ctx.restore()
-            label = L.SHORT_LABELS.get(key, "")
-            if kind in ("back_key", "back_hole", "front_lever", "spatula"):
-                D.text(ctx, label, x, y + 5, 13, align="center", font=text_font,
-                       color=L.WHITE if (on or back) else L.INK)
-            elif kind == "side_lever" or key == "S4":
-                D.text(ctx, label, x + 18, y + 5, 13, font=text_font, color=L.INK)
+            x, y, shape, a, b = L.ICON_SHAPE[key]
+            D.key_shape(ctx, cx + x, cy + y, shape, a, b)
+            D.fill_ink(ctx, col if key in keys else L.WHITE, 2)
 
     # panel -------------------------------------------------------------------
 
@@ -687,7 +566,13 @@ class Scene:
             col = L.ACCENT
         age = (t - cur.start) if cur else 1.0
         pop = 1 + 0.1 * max(0.0, 1 - age / 0.15)
-        size = (80 if len(big) <= 3 else 56) * pop
+        size = 80
+        ctx.select_font_face(title_font, cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        ctx.set_font_size(size)
+        width = ctx.text_extents(big).x_advance
+        if width > 158:  # keep clear of the text beside it
+            size *= 158 / width
+        size *= pop
         D.text(ctx, big, x + 22, y + 96, size, color=col, font=title_font)
         tx = x + 200
         D.text(ctx, sub, tx, y + 50, 18, font=text_font)

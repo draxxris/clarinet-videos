@@ -173,6 +173,20 @@ def capsule_stroke(ctx: cairo.Context, pts, width, fill, ink_w: float = 5.0, alp
     ctx.restore()
 
 
+def key_shape(ctx: cairo.Context, x, y, shape: str, a, b, grow: float = 0.0) -> None:
+    """Path for a fingering-chart key: a circle of radius a, or an oval a wide
+    and b tall, grown outward by grow."""
+    ctx.new_sub_path()
+    if shape == "circle":
+        ctx.arc(x, y, a + grow, 0, 2 * math.pi)
+        return
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.scale(a / 2 + grow, b / 2 + grow)
+    ctx.arc(0, 0, 1, 0, 2 * math.pi)
+    ctx.restore()
+
+
 def smoothstep(x: float) -> float:
     x = min(1.0, max(0.0, x))
     return x * x * (3 - 2 * x)
